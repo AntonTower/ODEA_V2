@@ -1,14 +1,26 @@
 <?php
-$servername = "localhost";
-$database = getenv("GESTOR_DB_NAME") ?: "gestor_evidencia_asignaciones";
+$servername = "127.0.0.1";
+$database = getenv("GESTOR_DB_NAME") ?: "gestor_evidencia_produccion";
 $username = "root";
 $password = "";
-// Create connection
-$conn = mysqli_connect($servername, $username, $password, $database);
-// Check connection
-if (!$conn->set_charset("utf8")) {
-    die("Connection failed: " . mysqli_connect_error());
+$port = 3308;
+
+// Crear conexión
+$conn = mysqli_connect(
+    $servername,
+    $username,
+    $password,
+    $database,
+    $port
+);
+
+// Verificar conexión
+if (!$conn) {
+    die("Error de conexión MySQL: " . mysqli_connect_error());
 }
-//echo "Connected successfully";
-//mysqli_close($conn);
+
+// Configurar codificación
+if (!$conn->set_charset("utf8mb4")) {
+    die("Error al configurar UTF-8: " . $conn->error);
+}
 ?>
