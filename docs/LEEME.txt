@@ -1,0 +1,10 @@
+Como publicar tu sitio
+----------------------
+1. Sube tus archivos aqui (esta carpeta es "auditoria": NO esta en linea).
+2. Cuando quieras publicar, sube un archivo VACIO llamado:  PUBLICAR
+3. En menos de un minuto el sistema revisa el contenido y, si pasa la
+   auditoria de seguridad, lo copia a produccion (ya en linea).
+4. El resultado aparece en este mismo sitio, en RESULTADO-PUBLICACION.txt.
+   Si dice NO SE PUBLICO, ahi mismo viene que corregir; corrige y vuelve
+   a subir PUBLICAR.
+Dudas: Area de Servicios de Red (ASR).

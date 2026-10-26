@@ -17,7 +17,7 @@
 
   <div class="card-content">
     <?php if (isset($_GET['err']) && $_GET['err'] == '1'): ?>
-      <div class="badge default" style="display:block; background: red; text-align:center; margin-bottom:12px;">
+      <div class="badge default" style="display:block; background: red; color: white; text-align:center; margin-bottom:12px;">
         Credenciales inválidas. Inténtalo nuevamente.
       </div>
     <?php endif; ?>
@@ -35,6 +35,16 @@
         Iniciar sesión
       </button>
     </form>
+
+    <!-- INICIO SECCIÓN: Botón de Registro -->
+    <div style="margin-top: 24px; text-align: center; border-top: 1px solid #eaeaea; padding-top: 16px;">
+      <p class="card-description" style="margin-bottom: 12px; font-size: 0.9rem;">¿No tienes una cuenta en ODEA?</p>
+      <a href="registro.php" class="btn" style="width:100%; display:block; text-align:center; text-decoration:none; color: var(--teacher-primary); border: 2px solid var(--teacher-primary); background: transparent; border-radius: 6px; padding: 0.5rem 1rem;">
+        Registrar Usuario
+      </a>
+    </div>
+    <!-- FIN SECCIÓN: Botón de Registro -->
+
   </div>
 </div>
 
