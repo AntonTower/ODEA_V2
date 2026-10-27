@@ -3,7 +3,7 @@
  * Vista de la tabla de Atributos por Tipo (DataTables + Responsive)
  * Recibe: ?id_tipo=...
  */
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 
 $id_tipo = isset($_GET['id_tipo']) ? (int)$_GET['id_tipo'] : 0;
 if ($id_tipo <= 0) {

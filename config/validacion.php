@@ -5,8 +5,8 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 // Verificar si el usuario está logueado
 if (!isset($_SESSION["SESUSUARIO"])) {
     // Redireccionar a la página de login si no está logueado
-    header("Location: login.php");
-    exit();
+    header("Location: /ODEA/gestor_evidencias/public/login.php");
+    exit;
 }
 
 $user_role = $_SESSION['ROL'];

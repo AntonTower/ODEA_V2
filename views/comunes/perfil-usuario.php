@@ -1,17 +1,26 @@
 <?php
 /**
- * Gestión del menú (versión proyecto actual)
- * - Requiere sesión iniciada (incluye validacion.php).
- * - Usa header/left-menu/footer del proyecto.
- * - Carga la tabla con AJAX desde vista-gestion-menu.php.
- * - Búsqueda en cliente (tu input superior) + filtro por rol (servidor).
+ * Perfil de usuario
  */
-include 'validacion.php'; //Verificar que el usuario ha inicuado sesión
-include 'conexion.php';
-include 'validacion-permiso.php'; //Verificar que el usuario esta permitido de acceder a esta pagina
-include 'header.php';
-include 'left-menu.php';
 
+// Definición de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('CONTROLLERS_DIR', BASE_DIR . '/controllers');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion-permiso.php';
+
+include COMPONENTS_DIR . '/layout/header.php';
+include COMPONENTS_DIR . '/layout/left-menu.php';
 ?>
 
 <section class="space-y-6">
@@ -20,22 +29,19 @@ include 'left-menu.php';
       <h1 class="text-2xl font-semibold">Perfil</h1>
       <p class="text-muted-foreground">Administra los datos de tu perfil</p>
     </div>
-
-    
   </header>
 
-  
+  <!-- Contenido del perfil -->
+</section>
 
-<!-- SweetAlert2 (opcional para feedback bonito) -->
+<!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <!-- jQuery + DataTables + Responsive -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<link  href="https://cdn.datatables.net/v/dt/dt-2.1.4/r-3.0.2/datatables.min.css" rel="stylesheet"/>
+<link href="https://cdn.datatables.net/v/dt/dt-2.1.4/r-3.0.2/datatables.min.css" rel="stylesheet"/>
 <script src="https://cdn.datatables.net/v/dt/dt-2.1.4/r-3.0.2/datatables.min.js"></script>
 
-<script>
-</script>
 <?php
-include 'footer.php';
+include COMPONENTS_DIR . '/layout/footer.php';
 ?>

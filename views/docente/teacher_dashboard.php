@@ -1,9 +1,26 @@
 <?php
-  // Forzamos modo Profesor para esta vista
-  $roleClass = 'teacher';
-  $currentUser = ['name' => 'Dr. Carlos Mendoza', 'email' => 'carlos.mendoza@universidad.edu'];
-  include 'header.php';
-  include 'left-menu.php';
+// Definición de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('CONTROLLERS_DIR', BASE_DIR . '/controllers');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion-permiso.php';
+
+// Forzamos modo Profesor para esta vista
+$roleClass = 'teacher';
+$currentUser = ['name' => 'Dr. Carlos Mendoza', 'email' => 'carlos.mendoza@universidad.edu'];
+
+include COMPONENTS_DIR . '/layout/header.php';
+include COMPONENTS_DIR . '/layout/left-menu.php';
 ?>
 
 <div class="space-y-6">
@@ -320,7 +337,7 @@
     el.innerHTML = `
       <div class="card-header" style="background:${headBg};">
         <h4 class="text-lg text-teacher-primary">${c.name}</h4>
-        <p class="card-description" style="margin-top:4px;">${c.career} • ${c.semester}</p>
+        <p class="card-description" style="margin-top:4px;">${c.career} - ${c.semester}</p>
       </div>
       <div class="card-content">
         <div class="space-y-2">
@@ -476,4 +493,4 @@
 })();
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include COMPONENTS_DIR . '/layout/footer.php'; ?>

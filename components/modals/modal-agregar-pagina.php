@@ -1,7 +1,6 @@
 <?php
 // modal-agregar-pagina.php
 // Modal (estilo propio del proyecto con .dialog) para crear una nueva página del menú con PREVISUALIZACIÓN DE ICONO.
-require_once 'conexion.php';
 
 // Iconos disponibles (necesitamos también el SVG para previsualizar)
 $iconos = [];
@@ -256,7 +255,7 @@ function lockPageScroll(lock) {
     btnSubmit.disabled = true;
 
     const fd = new FormData(form);
-    fetch('menu-pagina-insert.php', { method:'POST', body: fd })
+    fetch('<?= BASE_URL ?>/controllers/admin/menu-pagina-insert.php', { method:'POST', body: fd })
       .then(r => r.json())
       .then(data => {
         if (data && data.status === 'ok') {

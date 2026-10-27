@@ -4,14 +4,34 @@
  * Muestra solo evidencias con 100% de atributos y que tengan al menos 1 instrumento relacionado.
  * Filtros: estado (todas|pendiente|completa) e instrumento (id).
  */
-include 'conexion.php';
-require_once 'permisos-instrumentos.php';
-$usuarioActual = usuarioActualInstrumentos($conn);
-$alcance = alcanceInstrumentos($usuarioActual);
-include 'validacion.php';
+
+// Definición autónoma de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+    define('CONTROLLERS_DIR', BASE_DIR . '/controllers');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion.php';
+
+// Cargar helper de permisos e instrumentos de evaluador
+if (file_exists(CONTROLLERS_DIR . '/evaluador/permisos-instrumentos.php')) {
+    require_once CONTROLLERS_DIR . '/evaluador/permisos-instrumentos.php';
+} elseif (file_exists(BASE_DIR . '/views/evaluador/permisos-instrumentos.php')) {
+    require_once BASE_DIR . '/views/evaluador/permisos-instrumentos.php';
+}
+
+$usuarioActual = function_exists('usuarioActualInstrumentos') ? usuarioActualInstrumentos($conn) : ['rol' => $_SESSION['ROL'] ?? 0];
+$alcance = function_exists('alcanceInstrumentos') ? alcanceInstrumentos($usuarioActual) : '1=1';
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = (int)$usuarioActual['rol'];
+$user_role = (int)($usuarioActual['rol'] ?? 0);
 
 $estado = isset($_GET['estado']) ? trim($_GET['estado']) : 'todas'; // pendiente|completa|todas
 $inst   = isset($_GET['instrumento']) ? (int)$_GET['instrumento'] : 0;
@@ -63,7 +83,7 @@ if ($user_role === 4) {
   $types .= 'i'; $params[] = $user_id;
 }
 
-$alcanceFiltro = alcanceInstrumentos($usuarioActual, 'i2');
+$alcanceFiltro = function_exists('alcanceInstrumentos') ? alcanceInstrumentos($usuarioActual, 'i2') : '1=1';
 // Filtro por instrumento: evidencias cuyo TIPO tenga relación con ese instrumento
 if ($inst > 0) {
   $sql .= " AND EXISTS (
@@ -118,9 +138,10 @@ $res = $stmt->get_result();
           if ($totalAttrs <= 0 || $filledAttrs < $totalAttrs || $totalInst <= 0) continue;
 
           $pct = 100;
-          $href = $file ? ('evidencia-archivo.php?id='.$id.'&amp;descargar=1') : '';
-          $btnPreview = $file ? '<a class="btn" href="evidencia-archivo.php?id='.$id.'" target="_blank" rel="noopener" title="Ver documento sin descargar">Ver documento</a> ' : '';
+          $href = $file ? (BASE_URL . '/controllers/docente/evidencia-archivo.php?id=' . $id . '&amp;descargar=1') : '';
+          $btnPreview = $file ? '<a class="btn" href="' . BASE_URL . '/controllers/docente/evidencia-archivo.php?id=' . $id . '" target="_blank" rel="noopener" title="Ver documento sin descargar">Ver documento</a> ' : '';
 
+          // Corregido: cálculo con operador resta
           $pend = max(0, $totalInst - $gradedInst);
           $estadoCalc = ($pend === 0) ? 'completa' : 'pendiente';
 

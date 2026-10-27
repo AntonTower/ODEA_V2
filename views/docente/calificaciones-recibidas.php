@@ -8,10 +8,22 @@
  * - Muestra modal con la calificación (solo lectura).
  */
 
-include 'validacion.php';
-include 'conexion.php';
-include 'header.php';
-include 'left-menu.php';
+// Definición de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
+
+include COMPONENTS_DIR . '/layout/header.php';
+include COMPONENTS_DIR . '/layout/left-menu.php';
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
 $user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
@@ -198,7 +210,7 @@ let dtCR = null;
 const SEARCH_KEY = 'califRecibidasSearch';
 
 function loadTablaCR(){
-  const url = 'vista-calificaciones-recibidas.php?instrumento=' + encodeURIComponent(currentInstrumento) +
+  const url = '<?= BASE_URL ?>/views/docente/vista-calificaciones-recibidas.php?instrumento=' + encodeURIComponent(currentInstrumento) +
               '&estado=' + encodeURIComponent(currentEstado) + '&r=' + Date.now();
   const xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function(){
@@ -279,7 +291,7 @@ document.getElementById('btnGenerarPDF').addEventListener('click', function(){
     if (window.Swal) Swal.fire({icon:'info', title:'Selecciona un instrumento', text:'Elige un instrumento para generar el PDF.'});
     return;
   }
-  const url = 'calificaciones-pdf.php?instrumento=' + encodeURIComponent(currentInstrumento);
+  const url = '<?= BASE_URL ?>/views/docente/calificaciones-pdf.php?instrumento=' + encodeURIComponent(currentInstrumento);
   window.open(url, '_blank');
 });
 
@@ -313,9 +325,9 @@ window.openVerCalificacion = function(eviId, instId){
   document.getElementById('califBadge').textContent = '—';
   document.getElementById('califBadge').className = 'badge';
   document.getElementById('rowRango').style.display = 'none';
-  document.getElementById('btnIrDetalles').setAttribute('href', 'evidencia-detalle.php?id=' + encodeURIComponent(eviId));
+  document.getElementById('btnIrDetalles').setAttribute('href', '<?= BASE_URL ?>/views/docente/evidencia-detalle.php?id=' + encodeURIComponent(eviId));
 
-  fetch('evaluacion-get.php?id=' + encodeURIComponent(eviId))
+  fetch('<?= BASE_URL ?>/controllers/evaluador/evaluacion-get.php?id=' + encodeURIComponent(eviId))
     .then(r=>r.json())
     .then(j=>{
       if (!j || j.status !== 'ok') {
@@ -367,5 +379,10 @@ window.openVerCalificacion = function(eviId, instId){
 
 <?php
 // Solo markup + JS del modal (la API está separada en descargas-api.php)
-include 'modal-descargar-archivos.php';
-include 'footer.php';
+$modal_descargas = COMPONENTS_DIR . '/modals/modal-descargar-archivos.php';
+if (file_exists($modal_descargas)) {
+    include $modal_descargas;
+}
+
+include COMPONENTS_DIR . '/layout/footer.php';
+?>

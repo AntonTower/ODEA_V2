@@ -1,6 +1,5 @@
 <?php
 // modal-evaluar-evidencia.php
-require_once 'conexion.php';
 ?>
 <div class="dialog-backdrop" id="dlgEvalBackdrop"></div>
 <div class="dialog" id="dlgEval" role="dialog" aria-modal="true" aria-labelledby="dlgEvalTitle" data-open="false">

@@ -5,8 +5,20 @@
  * - Rol 4 (docentes): solo sus evidencias.
  * - Columna "Avance" con % de atributos capturados (valores_evidencia).
  */
-include 'conexion.php';
-include 'validacion.php';
+
+// Definición autónoma de constantes de rutas
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion.php';
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
 $user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
@@ -60,7 +72,6 @@ if (!$stmt) {
   exit;
 }
 if ($params) {
-  // Si hay filtros, bindea
   $stmt->bind_param($types, ...$params);
 }
 $stmt->execute();
@@ -106,12 +117,16 @@ $result = $stmt->get_result();
 
           $totalAttrs  = (int)$row['total_attrs'];
           $filledAttrs = (int)$row['filled_attrs'];
-          $pct = ($totalAttrs > 0) ? round($filledAttrs * 100 / $totalAttrs) : 0;
-          if ($pct < 0) $pct = 0; if ($pct > 100) $pct = 100;
 
-          $href = $file ? ('uploads/files/'.rawurlencode($file)) : '';
+          // Sintaxis corregida del porcentaje
+          $pct = ($totalAttrs > 0) ? round(($filledAttrs * 100) / $totalAttrs) : 0;
+          if ($pct < 0) $pct = 0; 
+          if ($pct > 100) $pct = 100;
 
-          // Botón Descargar (en lugar del link del nombre de archivo)
+          // Ruta corregida usando BASE_URL
+          $href = $file ? (BASE_URL . '/uploads/files/' . rawurlencode($file)) : '';
+
+          // Botón Descargar
           $btnDownload = $file ? '
             <a class="btn" href="'.$href.'" download="'.htmlspecialchars($file).'" title="Descargar archivo">
               <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
@@ -128,7 +143,7 @@ $result = $stmt->get_result();
               </svg>
             </button>';
 
-          // Editar: solo docentes (la suya)
+          // Editar: solo docentes (su propia evidencia)
           $canEdit = ((int)$user_role === 4) && ((int)$row['id_docente'] === (int)$user_id);
           $btnEdit = $canEdit ? '
             <button class="btn" type="button" title="Editar"

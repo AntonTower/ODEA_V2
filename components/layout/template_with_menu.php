@@ -14,7 +14,7 @@
   // $roleClass = 'teacher'; // opcional (por defecto suele ser 'student')
   // $currentUser = ['name'=>'Invitado','email'=>''];
 
-  include 'header.php';
+  include COMPONENTS_DIR . '/layout/header.php';
   include 'left-menu.php';
 ?>
 

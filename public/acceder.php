@@ -1,18 +1,30 @@
 <?php
 session_start(); // Inicia la sesión
-include('conexion.php'); // Conexión a la base de datos
 
-// === Recomendado: normalizar entradas ===
+// Definición de constantes de rutas
+if (!defined('CONFIG_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/..'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+// Carga de la conexión a la base de datos
+require_once CONFIG_DIR . '/conexion.php';
+
+// === Normalizar entradas ===
 $correo = isset($_POST['email']) ? trim(strtolower($_POST['email'])) : '';
 $password = $_POST['password'] ?? '';
 
 // Si faltan datos, vuelve al login
 if ($correo === '' || $password === '') {
-  header('location: login.php?err=1');
-  exit();
+    header('Location: login.php?err=1');
+    exit();
 }
 
-// Consulta preparada...
+// Consulta preparada
 $sqltxt = "SELECT u.id_usuario, u.nombre, u.apellidop, u.apellidom, u.correo, u.password, u.rol, u.activo, r.nombre as nombrerol
 FROM usuarios u 
 LEFT JOIN roles r ON r.id_rol = u.rol
@@ -25,7 +37,7 @@ $result = $stmt->get_result();
 
 if ($row = $result->fetch_assoc()) {
     if (password_verify($password, $row['password'])) {
-        // === Recomendado: prevenir fijación de sesión ===
+        // Prevenir fijación de sesión
         session_regenerate_id(true);
 
         $_SESSION['ID'] = $row['id_usuario'];
@@ -36,17 +48,12 @@ if ($row = $result->fetch_assoc()) {
         $_SESSION['RNOMBRE'] = $row['nombrerol'];
         $_SESSION['MENU'] = 1;
 
-        if ($row['rol'] == "1") { 
-            header('location: index.php');
-        } elseif ($row['rol'] == "5" && $row['activo'] == '0') {
-            header('location: deactivation.php');
-        } else {
-            header('location: index.php');
-        }
+        // Redirección al Dashboard principal
+        header('Location: ' . BASE_URL . '/views/comunes/index.php');
         exit();
     }
 }
 
 // Credenciales inválidas
-header('location: login.php?err=1');
+header('Location: login.php?err=1');
 exit();

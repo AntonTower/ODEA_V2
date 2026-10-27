@@ -5,14 +5,28 @@
  * - Filtros: Estado (Pendiente/Completa/Todas), Instrumento, Búsqueda.
  * - Abre modal para ver atributos y evaluar por instrumento.
  */
-include 'validacion.php';
-include 'conexion.php';
-include 'validacion-permiso.php';
-include 'header.php';
-include 'left-menu.php';
 
-require_once 'permisos-instrumentos.php';
+// Definición de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion-permiso.php';
+
+include COMPONENTS_DIR . '/layout/header.php';
+include COMPONENTS_DIR . '/layout/left-menu.php';
+
+require_once __DIR__ . '/permisos-instrumentos.php';
 $alcance = alcanceInstrumentos(usuarioActualInstrumentos($conn));
+
 // Instrumentos para filtro
 $ins = [];
 $qIns = "SELECT id_instrumento, abreviatura FROM instrumentos i WHERE activo = 1 AND ($alcance) ORDER BY id_instrumento";
@@ -64,7 +78,12 @@ if ($rs = $conn->query($qIns)) { while ($r = $rs->fetch_assoc()) $ins[] = $r; $r
 </section>
 
 <!-- Modal Evaluar -->
-<?php if (file_exists('modal-evaluar-evidencia.php')) include 'modal-evaluar-evidencia.php'; ?>
+<?php 
+$modal_eval = COMPONENTS_DIR . '/modals/modal-evaluar-evidencia.php';
+if (file_exists($modal_eval)) {
+    include $modal_eval;
+}
+?>
 
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -92,7 +111,7 @@ function loadTablaEval(){
   const estado = localStorage.getItem(EVAL_STATE_KEY) || 'todas';
   const inst   = localStorage.getItem(EVAL_INST_KEY) || '';
 
-  const url = 'vista-evaluacion.php?r=' + Date.now()
+  const url = '<?= BASE_URL ?>/views/evaluador/vista-evaluacion.php?r=' + Date.now()
             + '&estado=' + encodeURIComponent(estado)
             + '&instrumento=' + encodeURIComponent(inst);
 
@@ -192,4 +211,4 @@ window.openEvaluarEvidencia = function(id){
 loadTablaEval();
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include COMPONENTS_DIR . '/layout/footer.php'; ?>

@@ -1,7 +1,17 @@
 <?php
 // modal-agregar-usuario.php
 // Modal para crear usuario con validaciones, toggle de "mostrar contraseña" y carga de roles.
-require_once 'conexion.php';
+
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/conexion.php';
 
 // Roles disponibles
 $roles = [];
@@ -46,7 +56,7 @@ if ($resR = mysqli_query($conn, $qR)) {
           <div class="form-group">
             <label class="label" for="au_password">Contraseña</label>
             <div style="display:flex; gap:8px; align-items:center;">
-              <input class="input" id="au_password" name="password" type="password" minlength="6" maxlength="100" placeholder="Mínimo 6 caracteres" required />
+              <input class="input" id="au_password" name="password" type="password" minlength="6" maxlength="100" placeholder="Mínimo 6 caracteres" autocomplete="new-password" required />
               <button class="btn" type="button" id="btnTogglePass" title="Mostrar/Ocultar contraseña">👁</button>
             </div>
             <p class="text-muted" style="margin:4px 0 0;">Solo cambia visibilidad, no almacena texto plano.</p>
@@ -54,7 +64,7 @@ if ($resR = mysqli_query($conn, $qR)) {
           <div class="form-group">
             <label class="label" for="au_confirm">Confirmar contraseña</label>
             <div style="display:flex; gap:8px; align-items:center;">
-              <input class="input" id="au_confirm" name="confirm_password" type="password" minlength="6" maxlength="100" placeholder="Repite la contraseña" required />
+              <input class="input" id="au_confirm" name="confirm_password" type="password" minlength="6" maxlength="100" placeholder="Repite la contraseña" autocomplete="new-password" required />
               <button class="btn" type="button" id="btnTogglePass2" title="Mostrar/Ocultar confirmación">👁</button>
             </div>
           </div>
@@ -81,7 +91,14 @@ if ($resR = mysqli_query($conn, $qR)) {
             </select>
           </div>
         </div>
-      <?php $prefijoUsuario = 'au'; include 'campos-instrumentos-evaluador.php'; ?>
+
+      <?php 
+        $prefijoUsuario = 'au'; 
+        $fileCamposEval = BASE_DIR . '/views/evaluador/campos-instrumentos-evaluador.php';
+        if (file_exists($fileCamposEval)) {
+            include $fileCamposEval;
+        }
+      ?>
       </form>
     </div>
 
@@ -104,7 +121,7 @@ if ($resR = mysqli_query($conn, $qR)) {
 (function(){
   const modal     = document.getElementById('dlgAddUser');
   const backdrop  = document.getElementById('dlgAddUserBackdrop');
-  const openBtn   = document.getElementById('openModalAgregarUsuario'); // botón en gestion-usuarios.php
+  const openBtn   = document.getElementById('openModalAgregarUsuario');
   const btnCancel = document.getElementById('btnCancelAddUser');
 
   function open() {
@@ -128,7 +145,7 @@ if ($resR = mysqli_query($conn, $qR)) {
   window.closeAddUserModal = close;
 })();
 
-// ---- Toggle mostrar / ocultar contraseña (solo visibilidad del input) ----
+// ---- Toggle mostrar / ocultar contraseña ----
 (function(){
   function toggle(id){
     const el = document.getElementById(id);
@@ -156,7 +173,6 @@ if ($resR = mysqli_query($conn, $qR)) {
     const pass     = document.getElementById('au_password').value;
     const pass2    = document.getElementById('au_confirm').value;
     const rol      = document.getElementById('au_rol').value;
-    const activo   = document.getElementById('au_activo').value;
 
     if (!nombre || !apP || !apM || !correo || !pass || !pass2 || !rol) return;
     if (pass !== pass2) {
@@ -167,7 +183,7 @@ if ($resR = mysqli_query($conn, $qR)) {
     btnSubmit.disabled = true;
     const fd = new FormData(form);
 
-    fetch('usuario-insert.php', { method:'POST', body:fd })
+    fetch('<?= BASE_URL ?>/controllers/admin/usuario-insert.php', { method:'POST', body:fd })
       .then(r => r.json())
       .then(data => {
         if (data && data.status === 'ok') {

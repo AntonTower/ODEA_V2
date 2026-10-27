@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 include 'validacion.php';
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
 $user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;

@@ -9,7 +9,7 @@
  */
 
 include 'validacion.php';
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 /**
  * Forzar que en el menú lateral quede marcada como "activa"
  * la página de Tipos de Evidencia (tipos-evidencia.php),
@@ -19,7 +19,7 @@ include 'conexion.php';
  */
 $LEFT_ACTIVE_OVERRIDE = 'tipos-evidencia.php';
 
-include 'header.php';
+include COMPONENTS_DIR . '/layout/header.php';
 include 'left-menu.php';
 // ===== Control de acceso (solo roles 1 o 2) =====
 $user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;

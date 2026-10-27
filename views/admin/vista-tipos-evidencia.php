@@ -3,7 +3,19 @@
  * Vista de la tabla de Tipos de Evidencia (DataTables + Responsive)
  * - Los instrumentos provienen de instrumento_tipo_evidencia + instrumentos.
  */
-include 'conexion.php';
+
+// Definición autónoma de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/conexion.php';
 
 $sql = "SELECT
           te.id_tipo_evidencia,

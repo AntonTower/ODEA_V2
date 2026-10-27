@@ -8,11 +8,23 @@
  * - Rol 4 (docentes): ven solo sus evidencias, pueden agregar y editar solo las suyas.
  */
 
-include 'validacion.php';
-include 'conexion.php';
-include 'validacion-permiso.php';
-include 'header.php';
-include 'left-menu.php';
+// Definición de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion-permiso.php';
+
+include COMPONENTS_DIR . '/layout/header.php';
+include COMPONENTS_DIR . '/layout/left-menu.php';
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
 $user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
@@ -95,9 +107,12 @@ if ($rsT = mysqli_query($conn, $qT)) {
 </div>
 
 <?php
-// Modales agregar / editar
-if (file_exists('modal-agregar-evidencia.php')) include 'modal-agregar-evidencia.php';
-if (file_exists('modal-editar-evidencia.php')) include 'modal-editar-evidencia.php';
+// Modales agregar / editar centralizados
+$modal_agregar_evi = COMPONENTS_DIR . '/modals/modal-agregar-evidencia.php';
+$modal_editar_evi  = COMPONENTS_DIR . '/modals/modal-editar-evidencia.php';
+
+if (file_exists($modal_agregar_evi)) include $modal_agregar_evi;
+if (file_exists($modal_editar_evi)) include $modal_editar_evi;
 ?>
 
 <script>
@@ -193,7 +208,7 @@ function initDTE(){
 
 // Ver detalles
 window.openVerDetalles = function(id){
-  window.location.href = 'evidencia-detalle.php?id=' + encodeURIComponent(id);
+  window.location.href = '<?= BASE_URL ?>/views/docente/evidencia-detalle.php?id=' + encodeURIComponent(id);
 };
 
 // Editar (solo docentes o si decides permitir admin)
@@ -234,7 +249,7 @@ window.closeEliminarEvi = function(){
 };
 window.confirmEliminarEvi = function(){
   if (!__deleteEviId) return;
-  fetch('evidencia-eliminar.php', {
+  fetch('<?= BASE_URL ?>/controllers/docente/evidencia-eliminar.php', {
     method: 'POST',
     headers: { 'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8' },
     body: new URLSearchParams({ id_evidencia: __deleteEviId })
@@ -263,4 +278,4 @@ window.confirmEliminarEvi = function(){
 })();
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include COMPONENTS_DIR . '/layout/footer.php'; ?>

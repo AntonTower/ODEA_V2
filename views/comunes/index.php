@@ -8,8 +8,14 @@
  *   - 4: estadísticas solo del docente logueado.
  */
 
-include 'validacion.php';   // establece $user_role, $user_id
-include 'conexion.php';
+// Subimos dos niveles para llegar a la carpeta config
+require_once '../../config/validacion.php';   // establece $user_role, $user_id
+require_once '../../config/conexion.php';
+
+// Definimos la ruta de componentes dinámicamente si no existe
+if (!defined('COMPONENTS_DIR')) {
+    define('COMPONENTS_DIR', '../../components');
+}
 
 //$page = "dashboard-instrumentos.php";
 
@@ -19,13 +25,6 @@ $NUMERIC_PASS_PCT = 0.60;
 // =========================
 //  Consulta de estadísticas
 // =========================
-// Nota: Contamos evidencias "compatibles" por cada instrumento a través de la tabla puente.
-//       "Aprobadas" depende del tipo_calificacion.
-//       Para NUMERICA se usa el umbral descrito arriba (ajustable).
-//
-//       Se consideran sólo evidencias no ocultas (e.ocultar = 0).
-//       Si $user_role == 4, se filtra por e.id_docente = $user_id.
-
 $sql = "SELECT
   i.id_instrumento,
   i.abreviatura,
@@ -112,8 +111,8 @@ $totPend = max(0, $totCompat - $totAprob);
 // Helper para escapar HTML
 function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
-include 'header.php';
-include 'left-menu.php';
+include COMPONENTS_DIR . '/layout/header.php';
+include COMPONENTS_DIR . '/layout/left-menu.php';
 ?>
 
 <!-- ============================
@@ -135,12 +134,11 @@ include 'left-menu.php';
     </p>
   </header>
 
-  <!-- KPIs compactos (reemplaza el bloque anterior) -->
+  <!-- KPIs compactos -->
   <div class="kpi-set">
     <!-- Compatibles -->
     <div class="kpi" title="Evidencias con al menos un instrumento asignado">
       <div class="ico" aria-hidden="true">
-        <!-- icono: carpeta/check -->
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
           <path d="M3 7h6l2 2h10v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
           <path d="M9 14l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -155,7 +153,6 @@ include 'left-menu.php';
     <!-- Aprobadas -->
     <div class="kpi" title="Cumplen criterio (resultado=1 o ≥ umbral en numéricas)">
       <div class="ico" aria-hidden="true">
-        <!-- icono: badge/check -->
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
           <path d="M12 3l2.5 2.5L17 3l2 2-2.5 2.5L19 10l-2 2-2.5-2.5L12 12l-2.5-2.5L7 12l-2-2 2.5-2.5L5 5l2-2 2.5 2.5L12 3z" stroke="currentColor" stroke-width="1.2" opacity=".6"/>
           <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -170,7 +167,6 @@ include 'left-menu.php';
     <!-- Pendientes -->
     <div class="kpi" title="Compatibles que aún no alcanzan criterio de aprobación">
       <div class="ico" aria-hidden="true">
-        <!-- icono: reloj/pendiente -->
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
           <path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -188,7 +184,6 @@ include 'left-menu.php';
   <div class="text-xs text-muted-foreground">
     <strong>Nota:</strong> para instrumentos <em>NUMÉRICOS</em> se considera “aprobada” si la calificación es ≥ 
     <code>min + <?php echo (int)($NUMERIC_PASS_PCT*100); ?>% del rango</code>.
-    <!-- Ajusta el porcentaje en <code>$NUMERIC_PASS_PCT</code> dentro de este archivo. -->
   </div>
 
   <!-- Tarjetas con gráficas por instrumento -->
@@ -303,47 +298,48 @@ include 'left-menu.php';
   });
 })();
 </script>
-  <style>
-    .kpi-set {
-      display: grid;
-      grid-template-columns: repeat(1, minmax(0,1fr));
-      gap: 12px;
-    }
-    @media (min-width: 768px) {
-      .kpi-set { grid-template-columns: repeat(3, 1fr); }
-    }
-    .kpi {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border: 1px solid var(--border, #e5e7eb);
-      border-radius: 12px;
-      padding: 10px 12px;
-      background: var(--card, #fff);
-      transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
-    }
-    .kpi:hover {
-      box-shadow: 0 6px 16px rgba(0,0,0,.06);
-      border-color: var(--border-strong, #d1d5db);
-    }
-    .kpi .ico {
-      width: 36px; height: 36px;
-      display: grid; place-items: center;
-      border-radius: 10px;
-      background: var(--muted, #f3f4f6);
-      flex: none;
-    }
-    .kpi .val {
-      font-weight: 700;
-      font-size: 1.1rem; /* más pequeño que 3xl */
-      line-height: 1.1;
-    }
-    .kpi .lbl {
-      font-size: .75rem;
-      color: var(--muted-foreground, #6b7280);
-      line-height: 1.2;
-      margin-top: 1px;
-    }
-  </style>
+<style>
+  .kpi-set {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0,1fr));
+    gap: 12px;
+  }
+  @media (min-width: 768px) {
+    .kpi-set { grid-template-columns: repeat(3, 1fr); }
+  }
+  .kpi {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: var(--card, #fff);
+    transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+  }
+  .kpi:hover {
+    box-shadow: 0 6px 16px rgba(0,0,0,.06);
+    border-color: var(--border-strong, #d1d5db);
+  }
+  .kpi .ico {
+    width: 36px; height: 36px;
+    display: grid; place-items: center;
+    border-radius: 10px;
+    background: var(--muted, #f3f4f6);
+    flex: none;
+  }
+  .kpi .val {
+    font-weight: 700;
+    font-size: 1.1rem;
+    line-height: 1.1;
+  }
+  .kpi .lbl {
+    font-size: .75rem;
+    color: var(--muted-foreground, #6b7280);
+    line-height: 1.2;
+    margin-top: 1px;
+  }
+</style>
 <?php
-include 'footer.php';
+include COMPONENTS_DIR . '/layout/footer.php';
+?>

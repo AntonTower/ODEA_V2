@@ -7,11 +7,23 @@
  * - Búsqueda en cliente (input externo persistente).
  */
 
-include 'validacion.php';
-include 'conexion.php';
-include 'validacion-permiso.php';
-include 'header.php';
-include 'left-menu.php';
+// Definición de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion-permiso.php';
+
+include COMPONENTS_DIR . '/layout/header.php';
+include COMPONENTS_DIR . '/layout/left-menu.php';
 ?>
 <section class="space-y-6">
   <header class="flex items-center justify-between" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
@@ -82,8 +94,11 @@ include 'left-menu.php';
 
 <?php
 // Modales
-if (file_exists('modal-agregar-tipo-evidencia.php')) include 'modal-agregar-tipo-evidencia.php';
-if (file_exists('modal-editar-tipo-evidencia.php')) include 'modal-editar-tipo-evidencia.php';
+$modal_agregar_tipo = COMPONENTS_DIR . '/modals/modal-agregar-tipo-evidencia.php';
+$modal_editar_tipo  = COMPONENTS_DIR . '/modals/modal-editar-tipo-evidencia.php';
+
+if (file_exists($modal_agregar_tipo)) include $modal_agregar_tipo;
+if (file_exists($modal_editar_tipo)) include $modal_editar_tipo;
 ?>
 <script>
 /* ========= Utilidades ========= */
@@ -117,7 +132,7 @@ if (!window.__teFilterInstalled) {
 loadTableTE();
 
 function loadTableTE(){
-  const url = 'vista-tipos-evidencia.php?r=' + Date.now();
+  const url = '<?= BASE_URL ?>/views/admin/vista-tipos-evidencia.php?r=' + Date.now();
   const xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function(){
     if (xhr.readyState === 4) {
@@ -220,7 +235,7 @@ function bindInstrumentFiltersEvents(){
 
 // Ir a atributos/lista del tipo
 window.openAtributosTipo = function(id){
-  window.location.href = 'atributos-tipo.php?id_tipo=' + encodeURIComponent(id);
+  window.location.href = '<?= BASE_URL ?>/views/admin/atributos-tipo.php?id_tipo=' + encodeURIComponent(id);
 };
 
 // Editar
@@ -259,7 +274,7 @@ window.closeEliminarTE = function(){
 };
 window.confirmEliminarTE = function(){
   if (!__deleteTipoId) return;
-  fetch('tipo-evidencia-eliminar.php', {
+  fetch('<?= BASE_URL ?>/controllers/admin/tipo-evidencia-eliminar.php', {
     method: 'POST',
     headers: { 'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8' },
     body: new URLSearchParams({ id_tipo_evidencia: __deleteTipoId })
@@ -289,4 +304,4 @@ window.confirmEliminarTE = function(){
 </script>
 
 
-<?php include 'footer.php'; ?>
+<?php include COMPONENTS_DIR . '/layout/footer.php'; ?>

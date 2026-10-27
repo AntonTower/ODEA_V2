@@ -1,9 +1,8 @@
 <?php
 // modal-editar-usuario.php
 // Modal para editar usuario. Se llena vía AJAX desde usuario-get.php (por id).
-require_once 'conexion.php';
 
-// Roles
+// Cargar roles para el selector
 $roles = [];
 $qR = "SELECT id_rol, nombre FROM roles ORDER BY id_rol ASC";
 if ($resR = mysqli_query($conn, $qR)) {
@@ -64,17 +63,21 @@ if ($resR = mysqli_query($conn, $qR)) {
           <label class="label">Cambiar contraseña (opcional)</label>
           <div class="grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
             <div style="display:flex; gap:8px; align-items:center;">
-              <input class="input" id="eu_password" name="password" type="password" minlength="6" maxlength="100" placeholder="Nueva contraseña (opcional)" />
+              <input class="input" id="eu_password" name="password" type="password" minlength="6" maxlength="100" placeholder="Nueva contraseña (opcional)" autocomplete="new-password" />
               <button class="btn" type="button" id="btnTogglePassEdit1" title="Mostrar/Ocultar">👁</button>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
-              <input class="input" id="eu_confirm" name="confirm_password" type="password" minlength="6" maxlength="100" placeholder="Confirmar nueva contraseña" />
+              <input class="input" id="eu_confirm" name="confirm_password" type="password" minlength="6" maxlength="100" placeholder="Confirmar nueva contraseña" autocomplete="new-password" />
               <button class="btn" type="button" id="btnTogglePassEdit2" title="Mostrar/Ocultar">👁</button>
             </div>
           </div>
           <p class="text-muted" style="margin:4px 0 0;">Déjalas vacías si no deseas cambiar la contraseña.</p>
         </div>
-      <?php $prefijoUsuario = 'eu'; include 'campos-instrumentos-evaluador.php'; ?>
+      <?php 
+        $prefijoUsuario = 'eu'; 
+        $campos_inst = COMPONENTS_DIR . '/modals/campos-instrumentos-evaluador.php';
+        if (file_exists($campos_inst)) include $campos_inst;
+      ?>
       </form>
     </div>
 
@@ -112,8 +115,8 @@ if ($resR = mysqli_query($conn, $qR)) {
   window.openEditarUsuarioModal = function(id){
     // Limpia
     document.getElementById('formEditUser').reset();
-    // Traer datos
-    fetch('usuario-get.php?id='+encodeURIComponent(id))
+    // Traer datos mediante controlador
+    fetch('<?= BASE_URL ?>/controllers/admin/usuario-get.php?id=' + encodeURIComponent(id))
       .then(r=>r.json())
       .then(data=>{
         if (data && data.status === 'ok' && data.user) {
@@ -170,7 +173,6 @@ if ($resR = mysqli_query($conn, $qR)) {
     const apM      = document.getElementById('eu_apellidom').value.trim();
     const correo   = document.getElementById('eu_correo').value.trim();
     const rol      = document.getElementById('eu_rol').value;
-    const activo   = document.getElementById('eu_activo').value;
 
     const pass  = document.getElementById('eu_password').value;
     const conf  = document.getElementById('eu_confirm').value;
@@ -184,7 +186,7 @@ if ($resR = mysqli_query($conn, $qR)) {
     btnSubmit.disabled = true;
     const fd = new FormData(form);
 
-    fetch('usuario-update.php', { method:'POST', body:fd })
+    fetch('<?= BASE_URL ?>/controllers/admin/usuario-update.php', { method:'POST', body:fd })
       .then(r=>r.json())
       .then(data=>{
         if (data && data.status === 'ok') {

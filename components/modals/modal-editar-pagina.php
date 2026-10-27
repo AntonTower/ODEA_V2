@@ -1,7 +1,4 @@
 <?php
-// modal-editar-pagina.php
-require_once __DIR__ . '/conexion.php';
-
 // === Iconos (incluye SVG para preview) ===
 $iconos = [];
 $qI = "SELECT id_icono, descripcion, imagen FROM iconos ORDER BY descripcion ASC";

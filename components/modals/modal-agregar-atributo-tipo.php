@@ -1,6 +1,5 @@
 <?php
 // modal-agregar-atributo-tipo.php
-require_once 'conexion.php';
 
 // Cargar tipos de atributo (para el <select>)
 $tipos = [];

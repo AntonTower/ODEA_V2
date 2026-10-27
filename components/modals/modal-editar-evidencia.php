@@ -1,6 +1,5 @@
 <?php
-// Modal para editar evidencia (solo docentes sobre sus evidencias)
-require_once 'conexion.php';
+// Modal para editar evidencia (components/modals/modal-editar-evidencia.php)
 
 // Tipos de evidencia
 $tipos = [];
@@ -59,12 +58,14 @@ if ($resT = mysqli_query($conn, $qT)) {
   const backdrop  = document.getElementById('dlgEditEviBackdrop');
   const btnCancel = document.getElementById('btnCancelEditEvi');
   const form      = document.getElementById('formEditEvi');
+  const btnSubmit = document.getElementById('btnSubmitEditEvi');
 
   function open() {
     modal.setAttribute('data-open','true');
     backdrop.setAttribute('data-open','true');
     if (typeof window.lockPageScroll === 'function') lockPageScroll(true);
   }
+
   function close() {
     modal.setAttribute('data-open','false');
     backdrop.setAttribute('data-open','false');
@@ -75,12 +76,12 @@ if ($resT = mysqli_query($conn, $qT)) {
   if (btnCancel) btnCancel.addEventListener('click', close);
   if (backdrop)  backdrop.addEventListener('click', close);
 
-  // Exponer
+  // Carga de datos de evidencia al abrir
   window.openEditarEvidenciaModal = function(id){
     form.reset();
-    fetch('evidencia-get.php?id='+encodeURIComponent(id))
-      .then(r=>r.json())
-      .then(d=>{
+    fetch('<?= BASE_URL ?>/controllers/docente/evidencia-get.php?id=' + encodeURIComponent(id))
+      .then(r => r.json())
+      .then(d => {
         if (d && d.status === 'ok' && d.evidencia) {
           const e = d.evidencia;
           document.getElementById('ee_id').value             = e.id_evidencia;
@@ -93,28 +94,28 @@ if ($resT = mysqli_query($conn, $qT)) {
           if (window.Swal) Swal.fire({icon:'warning', title:'Aviso', text: msg});
         }
       })
-      .catch(()=>{
+      .catch(() => {
         if (window.Swal) Swal.fire({icon:'error', title:'Error', text:'Error al cargar datos.'});
       });
   };
 
   window.closeEditEviModal = close;
 
-  const btnSubmit = document.getElementById('btnSubmitEditEvi');
+  // Envío del formulario de actualización
   form.addEventListener('submit', function(e){
     e.preventDefault();
 
-    const id    = document.getElementById('ee_id').value;
-    const titulo= document.getElementById('ee_titulo').value.trim();
-    const tipo  = document.getElementById('ee_tipo').value;
+    const id     = document.getElementById('ee_id').value;
+    const titulo = document.getElementById('ee_titulo').value.trim();
+    const tipo   = document.getElementById('ee_tipo').value;
     if (!id || !titulo || !tipo) return;
 
     btnSubmit.disabled = true;
     const fd = new FormData(form);
 
-    fetch('evidencia-update.php', { method:'POST', body:fd })
-      .then(r=>r.json())
-      .then(d=>{
+    fetch('<?= BASE_URL ?>/controllers/docente/evidencia-update.php', { method:'POST', body:fd })
+      .then(r => r.json())
+      .then(d => {
         if (d && d.status === 'ok') {
           if (typeof window.closeEditEviModal === 'function') window.closeEditEviModal();
           if (typeof loadTableE === 'function') loadTableE();
@@ -124,10 +125,10 @@ if ($resT = mysqli_query($conn, $qT)) {
           if (window.Swal) Swal.fire({icon:'warning', title:'Aviso', text: msg});
         }
       })
-      .catch(()=>{
+      .catch(() => {
         if (window.Swal) Swal.fire({icon:'error', title:'Error', text:'Error al actualizar evidencia.'});
       })
-      .finally(()=>{ btnSubmit.disabled = false; });
+      .finally(() => { btnSubmit.disabled = false; });
   });
 })();
 </script>

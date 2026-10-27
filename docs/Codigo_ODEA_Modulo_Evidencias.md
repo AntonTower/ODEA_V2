@@ -122,7 +122,7 @@ Consulta de atributos dinámicos y valores capturados.
 <?php
 header('Content-Type: application/json; charset=utf-8');
 include 'validacion.php';
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
 $user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
@@ -264,7 +264,7 @@ Guardado transaccional de atributos dinámicos.
 <?php
 header('Content-Type: application/json; charset=utf-8');
 include 'validacion.php';
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
 $user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
@@ -498,7 +498,7 @@ Consulta de instrumentos calificables por evidencia.
 // evaluacion-get.php
 header('Content-Type: application/json; charset=utf-8');
 include 'validacion.php';
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 
 function jexit($ok,$msg='',$extra=[]){
   echo json_encode(array_merge(['status'=>$ok?'ok':'error','message'=>$msg],$extra));
@@ -588,7 +588,7 @@ Registro y actualización de calificaciones.
 // evaluacion-save.php
 header('Content-Type: application/json; charset=utf-8');
 include 'validacion.php';
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 
 function jexit($ok,$msg='',$extra=[]){
   echo json_encode(array_merge(['status'=>$ok?'ok':'error','message'=>$msg],$extra));
@@ -712,7 +712,7 @@ Vista tabular de evidencias listas para evaluar.
  * Muestra solo evidencias con 100% de atributos y que tengan al menos 1 instrumento relacionado.
  * Filtros: estado (todas|pendiente|completa) e instrumento (id).
  */
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 include 'validacion.php';
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
@@ -1118,7 +1118,7 @@ Generación de reporte PDF por instrumento.
  */
 
 include 'validacion.php';
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 
 // === Ruta a FPDF (ajústala si la tiene en otro lado) ===
 if (!class_exists('FPDF')) {

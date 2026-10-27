@@ -1,6 +1,17 @@
 <?php
-  // No requiere sesión, mostramos el header público
-  include 'header.php';
+// Definición de constantes de rutas si no han sido cargadas previamente
+if (!defined('COMPONENTS_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/..'));
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+    define('CONFIG_DIR', BASE_DIR . '/config');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+// No requiere sesión, mostramos el header público
+include COMPONENTS_DIR . '/layout/header.php';
 ?>
 
 <div class="card shadow-xl" style="max-width: 480px; margin: 40px auto;">
@@ -28,7 +39,7 @@
       </div>
     <?php endif; ?>
 
-    <form class="space-y-4" action="registro-save.php" method="POST" autocomplete="off" novalidate>
+    <form class="space-y-4" action="<?= BASE_URL ?>/controllers/comunes/registro-save.php" method="POST" autocomplete="off" novalidate>
       <div class="form-group">
         <label class="label" for="nombre">Nombre Completo</label>
         <input class="input teacher" id="nombre" name="nombre" type="text" placeholder="Ej. Dr. Carlos Mendoza" required>
@@ -63,4 +74,4 @@
   </div>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php include COMPONENTS_DIR . '/layout/footer.php'; ?>

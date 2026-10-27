@@ -5,7 +5,7 @@
  * PLANTILLA BASE DE PÁGINA
  * ============================
  */
-include 'header.php';
+include COMPONENTS_DIR . '/layout/header.php';
 include 'left-menu.php';
 ?>
 

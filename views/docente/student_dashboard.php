@@ -2,7 +2,7 @@
   // Forzamos modo Estudiante para esta vista
   $roleClass = 'student';
   $currentUser = ['name' => 'Ana García', 'email' => 'ana.garcia@universidad.edu'];
-  include 'header.php';
+  include COMPONENTS_DIR . '/layout/header.php';
   include 'left-menu.php';
 ?>
 

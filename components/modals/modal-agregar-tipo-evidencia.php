@@ -1,6 +1,10 @@
 <?php
 // modal-agregar-tipo-evidencia.php
-require_once 'conexion.php';
+
+// Asegurar constante de URL base
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
 
 // Traer instrumentos activos para mostrar como checkboxes
 $ins = [];
@@ -115,7 +119,7 @@ if ($rs = $conn->query($qIns)) {
     btnSubmit.disabled = true;
     const fd = new FormData(form);
 
-    fetch('tipo-evidencia-insert.php', { method:'POST', body:fd })
+    fetch('<?= BASE_URL ?>/controllers/admin/tipo-evidencia-insert.php', { method:'POST', body:fd })
       .then(r=>r.json())
       .then(data=>{
         if (data && data.status === 'ok') {

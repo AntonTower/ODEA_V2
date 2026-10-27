@@ -7,7 +7,7 @@
  *     * rol 4 (dueño): invitar a completar
  *     * otros roles: indicar que no hay info completa
  */
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 include 'validacion.php';
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;

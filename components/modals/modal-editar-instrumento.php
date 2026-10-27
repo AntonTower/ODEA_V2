@@ -1,6 +1,5 @@
 <?php
 // modal-editar-instrumento.php
-require_once 'conexion.php';
 ?>
 <div class="dialog-backdrop" id="dlgEditInstBackdrop"></div>
 <div class="dialog" id="dlgEditInst" role="dialog" aria-modal="true" aria-labelledby="dlgEditInstTitle" data-open="false">

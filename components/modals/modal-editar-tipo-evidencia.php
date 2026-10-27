@@ -1,6 +1,5 @@
 <?php
 // modal-editar-tipo-evidencia.php
-require_once 'conexion.php';
 
 // Traer instrumentos activos para las opciones del modal
 $ins = [];

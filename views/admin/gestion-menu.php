@@ -7,13 +7,23 @@
  * - Búsqueda en cliente (tu input superior) + filtro por rol (servidor).
  */
 
+// Definición de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+}
 
-//$extraBodyClass = 'page-gestion-menu';
-include 'validacion.php'; //Verificar que el usuario ha inicuado sesión
-include 'conexion.php';
-include 'validacion-permiso.php'; //Verificar que el usuario esta permitido de acceder a esta pagina
-include 'header.php';
-include 'left-menu.php';
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/validacion.php'; // Verificar que el usuario ha iniciado sesión
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion-permiso.php'; // Verificar que el usuario está permitido de acceder a esta página
+
+include COMPONENTS_DIR . '/layout/header.php';
+include COMPONENTS_DIR . '/layout/left-menu.php';
 
 // === Cargar roles para el filtro ===
 $query_roles = "SELECT id_rol, nombre FROM roles ORDER BY id_rol";
@@ -93,12 +103,12 @@ if ($rs = mysqli_query($conn, $query_roles)) {
 </div>
 
 <?php
+// Modales de la gestión del menú
+$modal_agregar_pagina = COMPONENTS_DIR . '/modals/modal-agregar-pagina.php';
+$modal_editar_pagina  = COMPONENTS_DIR . '/modals/modal-editar-pagina.php';
 
-//Incluir los archivos necesarios para el funcionamiento
-// Inserta el modal al final para que exista en DOM
-include 'modal-agregar-pagina.php';
-include 'modal-editar-pagina.php'; // modal + js de edición  
-
+if (file_exists($modal_agregar_pagina)) include $modal_agregar_pagina;
+if (file_exists($modal_editar_pagina))  include $modal_editar_pagina;
 ?>
 <script>
 /* =================== Utilidades comunes =================== */
@@ -128,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Expuesta para que otros la usen tras crear/editar/eliminar
 function loadTable(){
-  const url = 'vista-gestion-menu.php?role=' + encodeURIComponent(currentRole) + '&r=' + Date.now();
+  const url = '<?= BASE_URL ?>/views/admin/vista-gestion-menu.php?role=' + encodeURIComponent(currentRole) + '&r=' + Date.now();
   const xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function(){
     if (xhr.readyState === 4) {
@@ -193,11 +203,11 @@ function initDT(){
   }
 }
 
-/* =================== Handlers globales (llamados por onclick en la vista) =================== */
+/* =================== Handlers globales =================== */
 
 // Mostrar/Ocultar
 window.toggleEstado = function(id, to){
-  fetch('menu-pagina-toggle.php', {
+  fetch('<?= BASE_URL ?>/controllers/admin/menu-pagina-toggle.php', {
     method: 'POST',
     headers: { 'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8' },
     body: new URLSearchParams({ id_mp:id, ocultar:to })
@@ -217,7 +227,7 @@ window.toggleEstado = function(id, to){
   });
 };
 
-// Editar (abre modal editar)
+// Editar
 window.openEditar = function(id){
   if (typeof window.openEditarPagina === 'function') {
     window.openEditarPagina(id);
@@ -253,7 +263,7 @@ window.closeEliminar = function(){
 };
 window.confirmEliminar = function(){
   if (!__deleteId) return;
-  fetch('menu-pagina-eliminar.php', {
+  fetch('<?= BASE_URL ?>/controllers/admin/menu-pagina-eliminar.php', {
     method: 'POST',
     headers: { 'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8' },
     body: new URLSearchParams({ id_mp: __deleteId })
@@ -282,6 +292,4 @@ window.confirmEliminar = function(){
 })();
 </script>
 
-<?php
-include 'footer.php';
-?>
+<?php include COMPONENTS_DIR . '/layout/footer.php'; ?>

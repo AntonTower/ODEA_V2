@@ -1,11 +1,24 @@
 <?php
 /**
- * Vista de la tabla (DataTables + Responsive)
+ * Vista de la tabla (DataTables + Responsive) - Carga vía AJAX
  * - Usa solo menu_pagina + menu_rol (+ iconos)
  * - 1ª columna es el control responsive ("+")
  * - Soporta filtro por rol con ?role=ID (muestra solo páginas visibles vinculadas a ese rol)
  */
-include 'conexion.php';
+
+// Definición autónoma de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion.php';
 
 $role = isset($_GET['role']) ? trim($_GET['role']) : '';
 $hasRole = ($role !== '' && is_numeric($role));
@@ -161,8 +174,6 @@ if ($hasRole) {
         </tr>
         <?php endwhile; ?>
       <?php endif; ?>
-      <!-- Cuando no haya filas, DataTables mostrará su propio "No data available" y no fallará -->
     </tbody>
   </table>
 </div>
-

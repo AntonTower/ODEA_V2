@@ -2,7 +2,7 @@
 // evaluacion-save.php
 header('Content-Type: application/json; charset=utf-8');
 include 'validacion.php';
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 require_once 'permisos-instrumentos.php';
 $usuarioActual = usuarioActualInstrumentos($conn);
 $alcance = alcanceInstrumentos($usuarioActual);

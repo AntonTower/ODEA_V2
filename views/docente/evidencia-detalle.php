@@ -10,7 +10,7 @@
  */
 
 include 'validacion.php';
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
 $user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
@@ -64,7 +64,7 @@ $isPdf     = $fileOk && ($ext === 'pdf');
 $isImg     = $fileOk && in_array($ext, ['png','jpg','jpeg','webp'], true);
 
 $LEFT_ACTIVE_OVERRIDE = 'gestion-evidencias.php';
-include 'header.php';
+include COMPONENTS_DIR . '/layout/header.php';
 include 'left-menu.php';
 ?>
 <section class="space-y-6">

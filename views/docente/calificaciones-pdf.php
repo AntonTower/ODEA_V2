@@ -9,7 +9,7 @@
  */
 
 include 'validacion.php';
-include 'conexion.php';
+include CONFIG_DIR . '/conexion.php';
 
 // === Ruta a FPDF (ajústala si la tiene en otro lado) ===
 if (!class_exists('FPDF')) {

@@ -1,6 +1,4 @@
 <?php
-// Modal para agregar evidencia (docentes y admin).
-require_once 'conexion.php';
 
 // Tipos de evidencia
 $tipos = [];

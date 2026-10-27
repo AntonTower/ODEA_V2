@@ -5,11 +5,23 @@
  * - Carga la tabla por AJAX desde vista-instrumentos.php
  */
 
-include 'validacion.php';
-include 'conexion.php';
-include 'validacion-permiso.php';
-include 'header.php';
-include 'left-menu.php';
+// Definición de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion-permiso.php';
+
+include COMPONENTS_DIR . '/layout/header.php';
+include COMPONENTS_DIR . '/layout/left-menu.php';
 ?>
 <section class="space-y-6">
   <header class="flex items-center justify-between" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
@@ -66,7 +78,10 @@ include 'left-menu.php';
 
 <?php
 // Modal edición
-if (file_exists('modal-editar-instrumento.php')) include 'modal-editar-instrumento.php';
+$modal_editar_inst = COMPONENTS_DIR . '/modals/modal-editar-instrumento.php';
+if (file_exists($modal_editar_inst)) {
+    include $modal_editar_inst;
+}
 ?>
 
 <script>
@@ -75,7 +90,7 @@ document.getElementById('formNuevoInstrumento').addEventListener('submit', async
   const boton = this.querySelector('button');
   boton.disabled = true;
   try {
-    const respuesta = await fetch('instrumento-insert.php', {method:'POST', body:new FormData(this)});
+    const respuesta = await fetch('<?= BASE_URL ?>/controllers/admin/instrumento-insert.php', {method:'POST', body:new FormData(this)});
     const datos = await respuesta.json();
     document.getElementById('resultadoNuevoInstrumento').textContent = datos.message;
     if (datos.status === 'ok') { this.reset(); loadTableINS(); }
@@ -119,7 +134,7 @@ if (!window.__insFilterInstalled) {
 loadTableINS();
 
 function loadTableINS(){
-  const url = 'vista-instrumentos.php?r=' + Date.now();
+  const url = '<?= BASE_URL ?>/views/admin/vista-instrumentos.php?r=' + Date.now();
   const xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function(){
     if (xhr.readyState === 4) {
@@ -223,4 +238,4 @@ window.openEditarInstrumento = function(id){
 };
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include COMPONENTS_DIR . '/layout/footer.php'; ?>

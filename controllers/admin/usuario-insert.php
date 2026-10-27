@@ -1,10 +1,27 @@
 <?php
-// usuario-insert.php
+// controllers/admin/usuario-insert.php
 header('Content-Type: application/json; charset=utf-8');
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-require_once 'conexion.php';
-require_once 'permisos-instrumentos.php';
-exigirGestion($conn, 'gestion-usuarios.php');
+
+// Definición de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('CONTROLLERS_DIR', BASE_DIR . '/controllers');
+}
+
+// Carga segura de configuración y permisos
+require_once CONFIG_DIR . '/conexion.php';
+
+// Ajusta la ruta de permisos-instrumentos segun donde lo tengas ubicado (evaluador o admin)
+if (file_exists(CONTROLLERS_DIR . '/evaluador/permisos-instrumentos.php')) {
+    require_once CONTROLLERS_DIR . '/evaluador/permisos-instrumentos.php';
+} elseif (file_exists(CONTROLLERS_DIR . '/admin/permisos-instrumentos.php')) {
+    require_once CONTROLLERS_DIR . '/admin/permisos-instrumentos.php';
+}
+
+if (function_exists('exigirGestion')) {
+    exigirGestion($conn, 'gestion-usuarios.php');
+}
 
 function jexit($ok, $msg = '', $extra = []) {
   echo json_encode(array_merge(['status' => $ok ? 'ok' : 'error', 'message' => $msg], $extra));
@@ -47,25 +64,31 @@ $password_hashed = password_hash($password, PASSWORD_BCRYPT);
 
 $conn->begin_transaction();
 try {
-// Insert
-$sql_insert = "INSERT INTO usuarios (nombre, apellidop, apellidom, correo, password, rol, activo, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
-$stmt2 = $conn->prepare($sql_insert);
-$stmt2->bind_param("sssssis", $nombre, $apellidop, $apellidom, $correo, $password_hashed, $rol, $activo);
+  // Insert (Tipos: s = string, i = integer -> sssssii)
+  $sql_insert = "INSERT INTO usuarios (nombre, apellidop, apellidom, correo, password, rol, activo, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+  $stmt2 = $conn->prepare($sql_insert);
+  
+  $rol_int = (int)$rol;
+  $stmt2->bind_param("sssssii", $nombre, $apellidop, $apellidom, $correo, $password_hashed, $rol_int, $activo);
 
-if ($stmt2->execute()) {
-  $newId = $stmt2->insert_id;
-  $stmt2->close();
-  guardarInstrumentosEvaluador($conn, $newId, (int)$rol, $_POST['instrumentos'] ?? []);
-  $conn->commit();
-  jexit(true, 'Usuario creado.', ['id' => $newId]);
-} else {
-  $err = $conn->error;
-  $stmt2->close();
-  jexit(false, 'Error al registrar usuario: '.$err);
-}
+  if ($stmt2->execute()) {
+    $newId = $stmt2->insert_id;
+    $stmt2->close();
+    
+    if (function_exists('guardarInstrumentosEvaluador')) {
+      guardarInstrumentosEvaluador($conn, $newId, $rol_int, $_POST['instrumentos'] ?? []);
+    }
+    
+    $conn->commit();
+    jexit(true, 'Usuario creado correctamente.', ['id' => $newId]);
+  } else {
+    $err = $conn->error;
+    $stmt2->close();
+    jexit(false, 'Error al registrar usuario: ' . $err);
+  }
 
 } catch (Throwable $e) {
   $conn->rollback();
-  jexit(false, 'No se pudo guardar el usuario. Verifica los datos y los instrumentos seleccionados.');
+  jexit(false, 'No se pudo guardar el usuario: ' . $e->getMessage());
 }

@@ -1,6 +1,6 @@
 <?php
 /**
- * Vista de tabla (tbody) para Calificaciones recibidas
+ * Vista de tabla (tbody) para Calificaciones recibidas (Cargada vía AJAX)
  * - Filtros GET:
  *   - instrumento: id (0 = todos)
  *   - estado: 'todas' | 'aprobadas' | 'noaprobadas' | 'sin'
@@ -10,8 +10,19 @@
  *   - secondary     => Sin calificar
  */
 
-include 'conexion.php';
-include 'validacion.php';
+// Definición autónoma de constantes de rutas
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion.php';
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
 $user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
@@ -101,17 +112,17 @@ if (!empty($ids)) {
   $params2 = $ids;
 
   $sqlI = "SELECT
-             e.id_evidencia,
-             i.id_instrumento, i.abreviatura, i.nombre_completo,
-             i.tipo_calificacion, COALESCE(i.min_calificacion,0) AS min_cal, COALESCE(i.max_calificacion,10) AS max_cal,
-             ce.resultado, ce.comentario, ce.calificado_en
-           FROM evidencias e
-           JOIN instrumento_tipo_evidencia ite ON ite.id_tipo_evidencia = e.id_tipo_evidencia
-           JOIN instrumentos i ON i.id_instrumento = ite.id_instrumento AND i.activo = 1
-           LEFT JOIN calificacion_evidencia ce
+              e.id_evidencia,
+              i.id_instrumento, i.abreviatura, i.nombre_completo,
+              i.tipo_calificacion, COALESCE(i.min_calificacion,0) AS min_cal, COALESCE(i.max_calificacion,10) AS max_cal,
+              ce.resultado, ce.comentario, ce.calificado_en
+            FROM evidencias e
+            JOIN instrumento_tipo_evidencia ite ON ite.id_tipo_evidencia = e.id_tipo_evidencia
+            JOIN instrumentos i ON i.id_instrumento = ite.id_instrumento AND i.activo = 1
+            LEFT JOIN calificacion_evidencia ce
                   ON ce.id_evidencia = e.id_evidencia
                  AND ce.id_instrumento = i.id_instrumento
-           WHERE e.id_evidencia IN ($placeholders)";
+            WHERE e.id_evidencia IN ($placeholders)";
 
   if ($instFilter > 0) {
     $sqlI .= " AND i.id_instrumento = ? ";
@@ -143,10 +154,13 @@ if (!empty($ids)) {
 
     $totalAttrs  = (int)$row['total_attrs'];
     $filledAttrs = (int)$row['filled_attrs'];
-    $pct = ($totalAttrs > 0) ? round($filledAttrs * 100 / $totalAttrs) : 0;
-    if ($pct < 0) $pct = 0; if ($pct > 100) $pct = 100;
+    
+    // Sintaxis corregida para el cálculo de porcentaje
+    $pct = ($totalAttrs > 0) ? round(($filledAttrs * 100) / $totalAttrs) : 0;
+    if ($pct < 0) $pct = 0; 
+    if ($pct > 100) $pct = 100;
 
-    $href = $file ? ('uploads/files/'.rawurlencode($file)) : '';
+    $href = $file ? (BASE_URL . '/uploads/files/' . rawurlencode($file)) : '';
 
     $btnDownload = $file ? '
       <a class="btn" href="'.$href.'" download="'.htmlspecialchars($file).'" title="Descargar archivo">
@@ -157,7 +171,7 @@ if (!empty($ids)) {
 
     $instList = $map[$id] ?? [];
 
-    // ====== Filtro por estado (ARREGLADO: normaliza APROBACIÓN como float >= 1) ======
+    // ====== Filtro por estado ======
     $includeRow = true;
     if ($estado !== 'todas') {
       $includeRow = false;
@@ -174,10 +188,10 @@ if (!empty($ids)) {
         if ($isNum) {
           $min = (float)$inst['min_cal'];
           $max = (float)$inst['max_cal'];
-          $umbral = $min + $NUMERIC_PASS_PCT * ($max - $min);
+          // Sintaxis corregida en la fórmula del umbral
+          $umbral = $min + ($NUMERIC_PASS_PCT * ($max - $min));
           $ok = ($resNum >= $umbral);
         } else {
-          // APROBACIÓN: cualquier 1, 1.0, 1.00 => aprobado
           $ok = ($resNum >= 1.0);
         }
 
@@ -189,7 +203,7 @@ if (!empty($ids)) {
     if ($instFilter > 0 && empty($instList)) $includeRow = false;
     if (!$includeRow) continue;
 
-    // ====== Render badges por instrumento (ARREGLADO) ======
+    // ====== Render badges por instrumento ======
     $badges = [];
     foreach ($instList as $inst) {
       $iid   = (int)$inst['id_instrumento'];
@@ -205,28 +219,26 @@ if (!empty($ids)) {
         $resNum = (float)$resRaw;
         if ($isNum) {
           $min = (float)$inst['min_cal']; $max = (float)$inst['max_cal'];
-          $umbral = $min + $NUMERIC_PASS_PCT * ($max - $min);
+          // Sintaxis corregida en la fórmula del umbral
+          $umbral = $min + ($NUMERIC_PASS_PCT * ($max - $min));
           $ok = ($resNum >= $umbral);
           $cls = $ok ? 'badge-ok' : 'badge-warn';
-          // mostramos el número como valor
           $label = is_numeric($resNum) ? rtrim(rtrim(number_format($resNum, 2, '.', ''), '0'), '.') : (string)$resRaw;
         } else {
-          // APROBACIÓN normalizada
           $ok = ($resNum >= 1.0);
           $cls = $ok ? 'badge-ok' : 'badge-warn';
           $label = $ok ? 'Aprobada' : 'No aprobada';
         }
       }
 
-      $click = $hasRes ? 'onclick="openVerCalificacion('.$id.','.$iid.')"'
-                       : '';
+      $click = $hasRes ? 'onclick="openVerCalificacion('.$id.','.$iid.')"' : '';
       $badges[] = '<span class="badge clickable '.$cls.'" '.$click.' title="Instrumento: '.htmlspecialchars($abbr).'">'.
                   htmlspecialchars($abbr).': '.htmlspecialchars($label).'</span>';
     }
 
     $btnDetalles = '
       <button class="btn" type="button" title="Ver detalles"
-              onclick="window.location.href=\'evidencia-detalle.php?id='.$id.'\'">
+              onclick="window.location.href=\''.BASE_URL.'/views/docente/evidencia-detalle.php?id='.$id.'\'">
         <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
           <path d="M4 6h16M4 12h16M4 18h16" stroke="#10b981" stroke-width="1.8" stroke-linecap="round"/>
         </svg>

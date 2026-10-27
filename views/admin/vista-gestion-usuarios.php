@@ -1,16 +1,39 @@
 <?php
 /**
- * Vista de la tabla de usuarios (DataTables + Responsive)
- * - Usa SELECT de usuarios + roles.
- * - 1ª columna es el control responsive ("+")
- * - Soporta filtro por rol con ?role=ID (muestra usuarios con ese rol)
+ * Vista secundaria para la tabla de gestión de usuarios (Cargada vía AJAX)
  */
-include 'conexion.php';
-require_once 'permisos-instrumentos.php';
-exigirGestion($conn, 'gestion-usuarios.php');
+
+// Definición de constantes de rutas
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion-permiso.php';
 
 $role = isset($_GET['role']) ? trim($_GET['role']) : '';
 $hasRole = ($role !== '' && is_numeric($role));
+
+// Verificar si existe la tabla evaluador_instrumento para evitar errores de consulta
+$hasTableEI = false;
+$checkEI = $conn->query("SHOW TABLES LIKE 'evaluador_instrumento'");
+if ($checkEI && $checkEI->num_rows > 0) {
+    $hasTableEI = true;
+}
+
+$subqueryInst = $hasTableEI 
+  ? "(SELECT GROUP_CONCAT(i.abreviatura ORDER BY i.id_instrumento SEPARATOR ', ') 
+      FROM evaluador_instrumento ei 
+      JOIN instrumentos i ON i.id_instrumento = ei.id_instrumento 
+      WHERE ei.id_evaluador = u.id_usuario)" 
+  : "NULL";
 
 $sql = "SELECT 
           u.id_usuario,
@@ -19,29 +42,39 @@ $sql = "SELECT
           u.apellidom,
           u.correo,
           u.rol,
-          (SELECT GROUP_CONCAT(i.abreviatura ORDER BY i.id_instrumento SEPARATOR ', ') FROM evaluador_instrumento ei JOIN instrumentos i ON i.id_instrumento=ei.id_instrumento WHERE ei.id_evaluador=u.id_usuario) AS instrumentos_asignados,
+          {$subqueryInst} AS instrumentos_asignados,
           u.activo,
           r.nombre AS nombrerol,
           u.created_at AS creacion,
           u.updated_at AS actualizacion
         FROM usuarios u
         LEFT JOIN roles r ON r.id_rol = u.rol
-        WHERE 1 ";
+        WHERE 1=1 ";
+
+$params = [];
+$types = '';
 
 if ($hasRole) {
-  $sql .= " AND u.rol = ? ";
+    $sql .= " AND u.rol = ? ";
+    $params[] = (int)$role;
+    $types .= 'i';
 }
 
 $sql .= " ORDER BY u.id_usuario ASC ";
 
-if ($hasRole) {
-  $stmt = mysqli_prepare($conn, $sql);
-  mysqli_stmt_bind_param($stmt, 'i', $role);
-  mysqli_stmt_execute($stmt);
-  $result = mysqli_stmt_get_result($stmt);
-} else {
-  $result = $conn->query($sql);
+$stmt = $conn->prepare($sql);
+
+if (!$stmt) {
+    echo '<div class="card-content"><p class="text-muted-foreground">Error al preparar la consulta: ' . htmlspecialchars($conn->error) . '</p></div>';
+    exit;
 }
+
+if ($params) {
+    $stmt->bind_param($types, ...$params);
+}
+
+$stmt->execute();
+$result = $stmt->get_result();
 ?>
 
 <div class="card-content" style="overflow:hidden;">
@@ -78,7 +111,7 @@ if ($hasRole) {
             ? '<span class="badge default" title="Usuario activo">Activo</span>'
             : '<span class="badge secondary" title="Usuario inactivo">Inactivo</span>';
 
-          // Botón "Ver perfil" (sustituye al toggle de ocultar/mostrar)
+          // Botón "Ver perfil"
           $btnPerfil = '
             <button class="btn" type="button" title="Ver perfil"
                     onclick="openVerPerfil('.$id.')">
@@ -109,27 +142,21 @@ if ($hasRole) {
               </svg>
             </button>';
 
-          // Mail clickable
           $correoHtml = $correo ? '<a href="mailto:'.htmlspecialchars($correo).'" class="link">'.htmlspecialchars($correo).'</a>' : '—';
         ?>
         <tr>
-          <!-- control -->
           <td></td>
-
           <td><?= $id ?></td>
           <td class="font-medium"><?= htmlspecialchars($nombre ?: '—') ?></td>
           <td><?= $correoHtml ?></td>
-
           <td>
             <span class="badge" title="<?= htmlspecialchars($rolNombre) ?>">
               <?= htmlspecialchars(($rolId !== null ? $rolId : '—').' - '.$rolNombre) ?>
             </span>
           </td>
-
           <td><?= $estadoBadge ?></td>
           <td><span class="badge" title="<?= htmlspecialchars($row['creacion'] ?? '') ?>"><?= htmlspecialchars($crea) ?></span></td>
           <td><span class="badge" title="<?= htmlspecialchars($row['actualizacion'] ?? '') ?>"><?= htmlspecialchars($actu) ?></span></td>
-
           <td><?= htmlspecialchars($rolId === 3 ? ($row['instrumentos_asignados'] ?: 'Sin asignaciones') : 'No aplica') ?></td>
           <td style="display:flex; gap:8px;">
             <?= $btnPerfil ?>

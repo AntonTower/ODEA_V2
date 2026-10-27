@@ -53,8 +53,8 @@ $emailUser = $_SESSION['EMAIL'] ?? '';
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>ODEA - Plataforma Académica</title>
-  <link rel="shortcut icon" href="assets/icons/favicon.ico">
-  <link rel="stylesheet" href="styles/global.css">
+  <link rel="stylesheet" href="/ODEA/gestor_evidencias/styles/global.css">
+  <link rel="shortcut icon" href="/ODEA/gestor_evidencias/assets/icons/favicon.ico">
 </head>
 <body class="page <?= htmlspecialchars($bodyClass) ?>">
   <header class="app-header">

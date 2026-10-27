@@ -1,6 +1,13 @@
 <?php
-  // En el login NO queremos mostrar perfil; solo el header con toggle.
-  include 'header.php';
+// Definición de constantes de rutas si no han sido cargadas previamente
+if (!defined('COMPONENTS_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/..'));
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+    define('CONFIG_DIR', BASE_DIR . '/config');
+}
+
+// En el login NO queremos mostrar perfil; solo el header con toggle.
+include COMPONENTS_DIR . '/layout/header.php';
 ?>
 
 <div class="card shadow-xl" style="max-width: 480px; margin: 40px auto;">
@@ -48,4 +55,4 @@
   </div>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php include COMPONENTS_DIR . '/layout/footer.php'; ?>

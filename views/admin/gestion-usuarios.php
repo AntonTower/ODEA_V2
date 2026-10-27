@@ -1,17 +1,29 @@
 <?php
 /**
  * Gestión de usuarios (versión análoga a gestion-menu.php)
- * - Requiere sesión (validacion.php) y permiso (validacion-permiso.php).
- * - Usa header/left-menu/footer del proyecto.
- * - Carga la tabla con AJAX desde vista-gestion-usuarios.php.
- * - Búsqueda en cliente (input superior) + filtro por rol (servidor con ?role=ID).
+ * - Requiere sesión y permisos.
+ * - Usa header/left-menu/footer.
+ * - Carga la tabla con AJAX.
  */
 
-include 'validacion.php';
-include 'conexion.php';
-include 'validacion-permiso.php';
-include 'header.php';
-include 'left-menu.php';
+// Definición de constantes de rutas si no existen
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../../'));
+    define('COMPONENTS_DIR', BASE_DIR . '/components');
+    define('CONFIG_DIR', BASE_DIR . '/config');
+    define('CONTROLLERS_DIR', BASE_DIR . '/controllers');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/ODEA/gestor_evidencias');
+}
+
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion-permiso.php';
+
+include COMPONENTS_DIR . '/layout/header.php';
+include COMPONENTS_DIR . '/layout/left-menu.php';
 
 // === Cargar roles para el filtro ===
 $query_roles = "SELECT id_rol, nombre FROM roles ORDER BY id_rol";
@@ -28,7 +40,7 @@ if ($rs = mysqli_query($conn, $query_roles)) {
       <p class="text-muted-foreground">Administra las cuentas de usuario, su rol y estado.</p>
     </div>
 
-    <!-- Botón para abrir modal de "Agregar Usuario" (si lo usas) -->
+    <!-- Botón para abrir modal -->
     <button class="btn btn-primary" id="openModalAgregarUsuario" type="button" title="Agregar nuevo usuario">
       + Agregar Usuario
     </button>
@@ -73,7 +85,7 @@ if ($rs = mysqli_query($conn, $query_roles)) {
 <link  href="https://cdn.datatables.net/v/dt/dt-2.1.4/r-3.0.2/datatables.min.css" rel="stylesheet"/>
 <script src="https://cdn.datatables.net/v/dt/dt-2.1.4/r-3.0.2/datatables.min.js"></script>
 
-<!-- ===== Modal Eliminar (reutilizamos el patrón) ===== -->
+<!-- ===== Modal Eliminar ===== -->
 <div class="dialog-backdrop" id="dlgBackdropU"></div>
 <div class="dialog" id="dlgEliminarU" role="dialog" aria-modal="true" aria-labelledby="dlgEliminarUTitle" data-open="false">
   <div class="dialog-card" style="max-width:520px;">
@@ -92,24 +104,24 @@ if ($rs = mysqli_query($conn, $query_roles)) {
 </div>
 
 <?php
-// Si usarás modales de alta/edición, inclúyelos aquí:
-if (file_exists('modal-agregar-usuario.php')) include 'modal-agregar-usuario.php';
-if (file_exists('modal-editar-usuario.php')) include 'modal-editar-usuario.php';
+// Modales desde components/modals
+$modal_agregar = COMPONENTS_DIR . '/modals/modal-agregar-usuario.php';
+$modal_editar  = COMPONENTS_DIR . '/modals/modal-editar-usuario.php';
+
+if (file_exists($modal_agregar)) include $modal_agregar;
+if (file_exists($modal_editar))  include $modal_editar;
 ?>
 
 <script>
-/* =================== Utilidades comunes =================== */
 window.lockPageScroll = function(lock){
   const html = document.documentElement;
   html.style.overflow = lock ? 'hidden' : '';
 };
 
-/* =================== DataTable / Carga AJAX =================== */
 const SEARCH_KEY = 'gestionUsuariosSearch';
 let dtU = null;
 let currentRoleU = '';
 
-// Carga inicial
 loadTableU();
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -123,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadTableU(){
-  const url = 'vista-gestion-usuarios.php?role=' + encodeURIComponent(currentRoleU) + '&r=' + Date.now();
+  const url = '<?= BASE_URL ?>/views/admin/vista-gestion-usuarios.php?role=' + encodeURIComponent(currentRoleU) + '&r=' + Date.now();
   const xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function(){
     if (xhr.readyState === 4) {
@@ -150,7 +162,7 @@ function initDTU(){
     pageLength: 10,
     lengthMenu: [10, 25, 50, 100],
     stateSave: true,
-    order: [[1, 'asc']], // por ID
+    order: [[1, 'asc']],
     dom: "<'dt-top'>t<'dt-bottom' l i p>",
     language: {
       info: "Mostrando _START_ a _END_ de _TOTAL_ usuarios",
@@ -187,15 +199,11 @@ function initDTU(){
   }
 }
 
-/* =================== Handlers globales =================== */
-
-// Ver perfil
+// Redirección al perfil
 window.openVerPerfil = function(id){
-  // Redirige a tu página de perfil (ajusta el nombre si ya tienes otra ruta)
-  window.location.href = 'perfil-usuario.php?id=' + encodeURIComponent(id);
+  window.location.href = '<?= BASE_URL ?>/views/comunes/perfil-usuario.php?id=' + encodeURIComponent(id);
 };
 
-// Editar (abre modal editar si existe función global)
 window.openEditarUsuario = function(id){
   if (typeof window.openEditarUsuarioModal === 'function') {
     window.openEditarUsuarioModal(id);
@@ -204,7 +212,6 @@ window.openEditarUsuario = function(id){
   }
 };
 
-// Eliminar (diálogo)
 let __deleteUserId = null;
 window.openEliminarU = function(id, name){
   __deleteUserId = id;
@@ -219,6 +226,7 @@ window.openEliminarU = function(id, name){
     lockPageScroll(true);
   }
 };
+
 window.closeEliminarU = function(){
   __deleteUserId = null;
   const dlg = document.getElementById('dlgEliminarU');
@@ -229,9 +237,11 @@ window.closeEliminarU = function(){
     lockPageScroll(false);
   }
 };
+
 window.confirmEliminarU = function(){
   if (!__deleteUserId) return;
-  fetch('usuario-eliminar.php', {
+  // Apunta a los controladores en controllers/admin/
+  fetch('<?= BASE_URL ?>/controllers/admin/usuario-eliminar.php', {
     method: 'POST',
     headers: { 'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8' },
     body: new URLSearchParams({ id_usuario: __deleteUserId })
@@ -253,11 +263,10 @@ window.confirmEliminarU = function(){
   });
 };
 
-// Cerrar modal de eliminar tocando el backdrop
 (function(){
   const backdrop = document.getElementById('dlgBackdropU');
   if (backdrop) backdrop.addEventListener('click', window.closeEliminarU);
 })();
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include COMPONENTS_DIR . '/layout/footer.php'; ?>
