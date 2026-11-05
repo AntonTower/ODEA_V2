@@ -19,15 +19,7 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
-// Asegurar definición de constantes de rutas
-if (!defined('BASE_DIR')) {
-    define('BASE_DIR', realpath(__DIR__ . '/../../'));
-    define('CONFIG_DIR', BASE_DIR . '/config');
-}
-
-if (!defined('BASE_URL')) {
-    define('BASE_URL', '/ODEA/gestor_evidencias');
-}
+require_once __DIR__ . '/../../config/paths.php';
 
 $user_role = $_SESSION['ROL'] ?? null;
 
@@ -60,6 +52,18 @@ if ($user_role !== null) {
 
 // Fallback si no hay sesión o no hay páginas para el rol
 $renderFallback = (empty($pages));
+$legacyPageRoutes = [
+    'index.php' => 'views/comunes/index.php',
+    'perfil.php' => 'views/comunes/perfil.php',
+    'gestion-usuarios.php' => 'views/admin/gestion-usuarios.php',
+    'tipos-evidencia.php' => 'views/admin/tipos-evidencia.php',
+    'gestion-evidencias.php' => 'views/docente/gestion-evidencias.php',
+    'instrumentos.php' => 'views/admin/instrumentos.php',
+    'evaluacion.php' => 'views/evaluador/evaluacion.php',
+    'gestion-menu.php' => 'views/admin/gestion-menu.php',
+    'calificaciones-recibidas.php' => 'views/docente/calificaciones-recibidas.php',
+    'teacher_dashboard.php' => 'views/docente/teacher_dashboard.php',
+];
 
 // Detectar ruta actual o forzarla (override) para "is-active"
 $overrideActiveFile = $overrideActiveFile ?? ($LEFT_ACTIVE_OVERRIDE ?? null);
@@ -105,6 +109,10 @@ $currentFile = strtolower(
         <?php foreach ($pages as $p): 
           $archivoRuta = $p['archivo'];
           $isActive = (strtolower(basename($archivoRuta)) === $currentFile) ? ' is-active' : '';
+
+          if (strpos($archivoRuta, '/') === false && isset($legacyPageRoutes[strtolower($archivoRuta)])) {
+              $archivoRuta = $legacyPageRoutes[strtolower($archivoRuta)];
+          }
           
           // Construcción de la URL absoluta con BASE_URL
           if (strpos($archivoRuta, 'http') === 0 || strpos($archivoRuta, '/') === 0) {

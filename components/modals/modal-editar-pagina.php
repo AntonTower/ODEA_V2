@@ -37,9 +37,9 @@ if ($rr = mysqli_query($conn, $qR)) {
 
           <!-- Archivo -->
           <div class="form-group">
-            <label class="label" for="ep_archivo">Archivo (ruta o .php)</label>
-            <input class="input" id="ep_archivo" name="archivo" type="text" maxlength="100" required>
-            <p class="text-muted" style="margin:4px 0 0;">Debe ser único (sin espacios).</p>
+            <label class="label" for="ep_archivo">Ruta de destino (.php)</label>
+            <input class="input" id="ep_archivo" name="archivo" type="text" maxlength="150" required>
+            <p class="text-muted" style="margin:4px 0 0;">Ruta relativa a la carpeta del proyecto, sin espacios.</p>
           </div>
 
           <!-- Icono con preview -->

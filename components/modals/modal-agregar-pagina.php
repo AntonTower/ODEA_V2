@@ -38,9 +38,9 @@ if ($resR = mysqli_query($conn, $qR)) {
 
         <!-- Archivo -->
         <div class="form-group">
-          <label class="label" for="ap_archivo">Archivo (ruta .php)</label>
-          <input class="input" id="ap_archivo" name="archivo" type="text" maxlength="100" placeholder="ej. reportes.php" required />
-          <p class="text-muted" style="margin:4px 0 0;">Nombre de archivo único (sin espacios).</p>
+          <label class="label" for="ap_archivo">Ruta de destino (.php)</label>
+          <input class="input" id="ap_archivo" name="archivo" type="text" maxlength="150" placeholder="ej. views/admin/gestion-menu.php" required />
+          <p class="text-muted" style="margin:4px 0 0;">Ruta relativa a la carpeta del proyecto, sin espacios.</p>
         </div>
 
         <!-- Icono (con PREVIEW) -->

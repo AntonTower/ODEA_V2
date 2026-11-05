@@ -13,9 +13,7 @@ if (!defined('BASE_DIR')) {
     define('CONTROLLERS_DIR', BASE_DIR . '/controllers');
 }
 
-if (!defined('BASE_URL')) {
-    define('BASE_URL', '/ODEA/gestor_evidencias');
-}
+require_once __DIR__ . '/../../config/paths.php';
 
 require_once CONFIG_DIR . '/conexion.php';
 require_once CONFIG_DIR . '/validacion.php';
