@@ -301,16 +301,16 @@ CREATE TABLE `menu_pagina` (
 --
 
 INSERT INTO `menu_pagina` (`id_mp`, `nombre_pagina`, `archivo`, `id_icono`, `ocultar`) VALUES
-(1, 'Resumen', 'index.php', 1, 0),
-(2, 'Usuarios', 'gestion-usuarios.php', 2, 0),
-(3, 'Tipos de Evidencias', 'tipos-evidencia.php', 14, 0),
-(4, 'Evidencias', 'gestion-evidencias.php', 5, 0),
-(5, 'Instrumentos', 'instrumentos.php', 15, 0),
-(6, 'Evaluación', 'evaluacion.php', 9, 0),
-(7, 'Configuración', 'gestion-menu.php', 7, 0),
-(8, 'Calificaciones', 'calificaciones-recibidas.php', 19, 0),
-(9, 'Docente Ventana Muestra', 'teacher_dashboard.php', 2, 1),
-(18, 'Perfil', 'perfil.php', 13, 0);
+(1, 'Resumen', 'views/comunes/index.php', 1, 0),
+(2, 'Usuarios', 'views/admin/gestion-usuarios.php', 2, 0),
+(3, 'Tipos de Evidencias', 'views/admin/tipos-evidencia.php', 14, 0),
+(4, 'Evidencias', 'views/docente/gestion-evidencias.php', 5, 0),
+(5, 'Instrumentos', 'views/admin/instrumentos.php', 15, 0),
+(6, 'Evaluación', 'views/evaluador/evaluacion.php', 9, 0),
+(7, 'Configuración', 'views/admin/gestion-menu.php', 7, 0),
+(8, 'Calificaciones', 'views/docente/calificaciones-recibidas.php', 19, 0),
+(9, 'Docente Ventana Muestra', 'views/docente/teacher_dashboard.php', 2, 1),
+(18, 'Perfil', 'views/comunes/perfil.php', 13, 0);
 
 -- --------------------------------------------------------
 

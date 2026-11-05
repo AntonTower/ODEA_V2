@@ -10,9 +10,7 @@
 declare(strict_types=1);
 
 // Definición de constante de ruta si no existe
-if (!defined('BASE_URL')) {
-    define('BASE_URL', '/ODEA/gestor_evidencias');
-}
+require_once __DIR__ . '/../config/paths.php';
 
 // Iniciar sesión si no existe
 if (session_status() !== PHP_SESSION_ACTIVE) {

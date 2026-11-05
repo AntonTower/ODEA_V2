@@ -7,9 +7,7 @@ if (!defined('CONFIG_DIR')) {
     define('CONFIG_DIR', BASE_DIR . '/config');
 }
 
-if (!defined('BASE_URL')) {
-    define('BASE_URL', '/ODEA/gestor_evidencias');
-}
+require_once __DIR__ . '/../config/paths.php';
 
 // Carga de la conexión a la base de datos
 require_once CONFIG_DIR . '/conexion.php';

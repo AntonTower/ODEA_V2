@@ -9,6 +9,11 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
+if (!defined('BASE_DIR')) {
+  define('BASE_DIR', realpath(__DIR__ . '/../..'));
+}
+require_once BASE_DIR . '/config/paths.php';
+
 $loggedIn = isset($_SESSION['SESUSUARIO']);
 
 // Normaliza el nombre del rol desde la sesión
@@ -53,8 +58,8 @@ $emailUser = $_SESSION['EMAIL'] ?? '';
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>ODEA - Plataforma Académica</title>
-  <link rel="stylesheet" href="/ODEA/gestor_evidencias/styles/global.css">
-  <link rel="shortcut icon" href="/ODEA/gestor_evidencias/assets/icons/favicon.ico">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/styles/global.css">
+  <link rel="shortcut icon" href="<?= BASE_URL ?>/assets/icons/favicon.ico">
 </head>
 <body class="page <?= htmlspecialchars($bodyClass) ?>">
   <header class="app-header">
@@ -120,7 +125,7 @@ $emailUser = $_SESSION['EMAIL'] ?? '';
                 <span>Cambiar tema</span>
               </button>
 
-              <a class="dropdown-item" href="perfil.php">
+              <a class="dropdown-item" href="<?= BASE_URL ?>/views/comunes/perfil.php">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Z" stroke="currentColor" stroke-width="1.8"/>
                   <path d="M3 21a9 9 0 0 1 18 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
@@ -130,7 +135,7 @@ $emailUser = $_SESSION['EMAIL'] ?? '';
 
               <div class="dropdown-sep"></div>
 
-              <a class="dropdown-item text-danger" href="logout.php">
+              <a class="dropdown-item text-danger" href="<?= BASE_URL ?>/public/logout.php">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                   <path d="M16 17l5-5-5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>

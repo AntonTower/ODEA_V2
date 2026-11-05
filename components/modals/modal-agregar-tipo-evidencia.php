@@ -2,9 +2,7 @@
 // modal-agregar-tipo-evidencia.php
 
 // Asegurar constante de URL base
-if (!defined('BASE_URL')) {
-    define('BASE_URL', '/ODEA/gestor_evidencias');
-}
+require_once __DIR__ . '/../../config/paths.php';
 
 // Traer instrumentos activos para mostrar como checkboxes
 $ins = [];

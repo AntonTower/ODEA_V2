@@ -43,7 +43,7 @@ if (!$evi) {
 
 // Si es docente, debe ser dueño
 if ($user_role === 4 && (int)$evi['id_docente'] !== $user_id) {
-  header('Location: index.php');
+  header('Location: ' . BASE_URL . '/views/comunes/index.php');
   exit;
 }
 
