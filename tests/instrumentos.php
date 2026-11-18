@@ -6,7 +6,7 @@ chdir(dirname(__DIR__));
 $db = new mysqli('localhost', 'root', '');
 $db->set_charset('utf8mb4');
 $nombre = 'gestor_test_instrumentos_'.bin2hex(random_bytes(5));
-$sql = str_replace('gestor_evidencia_asignaciones', $nombre, file_get_contents('sql/gestor_evidencia_asignaciones.sql'));
+$sql = "CREATE DATABASE `$nombre` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; USE `$nombre`;\n".file_get_contents('sql/gestor_evidencia_produccion_v2.sql');
 $runner = tempnam(sys_get_temp_dir(), 'instrumentos_');
 $archivoPrueba = 'test_visor_'.bin2hex(random_bytes(8)).'.pdf';
 $rutaPrueba = getcwd().'/uploads/files/'.$archivoPrueba;
@@ -40,7 +40,7 @@ try {
     do { if ($r=$db->store_result()) $r->free(); } while ($db->more_results() && $db->next_result());
     $db->select_db($nombre);
     comprobar($db->query("SHOW COLUMNS FROM tipos_de_evidencia")->num_rows===3, 'Esquema sin columnas heredadas');
-    comprobar((int)$db->query('SELECT COUNT(*) FROM evaluador_instrumento')->fetch_row()[0]===9, 'Asignaciones iniciales conservadas');
+    comprobar((int)$db->query('SELECT COUNT(*) FROM evaluador_instrumento')->fetch_row()[0]===1, 'Asignación inicial del evaluador conservada');
     $datos = ['nombre'=>'Evaluador', 'apellidop'=>'Prueba', 'apellidom'=>'Temporal', 'correo'=>'evaluador@test.invalid', 'rol'=>3, 'activo'=>1, 'password'=>'prueba123', 'confirm_password'=>'prueba123', 'instrumentos'=>[1,2]];
     $r=endpoint('usuario-insert.php',1,1,$datos);
     comprobar($r['status']==='ok','Alta de evaluador con varios instrumentos');
@@ -49,7 +49,7 @@ try {
     comprobar($r['user']['instrumentos']===[1,2], 'Lectura de asignaciones');
     $db->query("INSERT INTO tipos_de_evidencia (nombre_tipo) VALUES ('Tipo temporal')"); $tid=$db->insert_id;
     $db->query("INSERT INTO atributos_tipo_evidencia (id_tipo_evidencia,id_tipo_atributo,nombre_atributo,slug) VALUES ($tid,1,'Texto','texto')"); $aid=$db->insert_id;
-    $db->query("INSERT INTO evidencias (id_docente,id_tipo_evidencia,titulo,archivo) VALUES (4,$tid,'Prueba permisos','test.pdf')"); $eid=$db->insert_id;
+    $db->query("INSERT INTO evidencias (id_docente,id_tipo_evidencia,titulo,archivo) VALUES (2,$tid,'Prueba permisos','test.pdf')"); $eid=$db->insert_id;
     $db->query("INSERT INTO evidencia_valores_atributo (id_evidencia,id_ate,valor_texto) VALUES ($eid,$aid,'Completo')");
     $db->query("INSERT INTO instrumento_tipo_evidencia (id_instrumento,id_tipo_evidencia) VALUES (1,$tid),(2,$tid),(3,$tid)");
     copy('sql/prueba/Evidencia de prueba.pdf', $rutaPrueba);

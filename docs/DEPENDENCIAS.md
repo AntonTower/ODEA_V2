@@ -13,7 +13,7 @@ Entornos recomendados:
 
 ## Versiones usadas como referencia
 
-El archivo `sql/gestor_evidencia.sql` fue exportado desde un entorno con:
+El archivo vigente `sql/gestor_evidencia_produccion_v2.sql` fue exportado desde un entorno con:
 
 - phpMyAdmin 5.2.1
 - MariaDB 10.4.32
@@ -61,10 +61,10 @@ Alternativa:
 MySQL 8.0 o superior
 ```
 
-La base de datos esperada por el codigo se llama:
+La base de datos esperada por defecto por el codigo se llama:
 
 ```text
-gestor_evidencia
+gestor_evidencia_produccion
 ```
 
 ## Extensiones PHP necesarias
@@ -184,10 +184,10 @@ Entrar a phpMyAdmin:
 http://localhost/phpmyadmin
 ```
 
-Crear una base de datos llamada:
+Crear una base de datos vacía llamada:
 
 ```text
-gestor_evidencia
+gestor_evidencia_produccion
 ```
 
 Usar cotejamiento recomendado:
@@ -201,14 +201,14 @@ utf8mb4_general_ci
 Importar:
 
 ```text
-sql/gestor_evidencia.sql
+sql/gestor_evidencia_produccion_v2.sql
 ```
 
 Desde phpMyAdmin:
 
-1. Seleccionar la base `gestor_evidencia`.
+1. Seleccionar la base `gestor_evidencia_produccion`.
 2. Entrar a la pestana Importar.
-3. Seleccionar el archivo `sql/gestor_evidencia.sql`.
+3. Seleccionar el archivo `sql/gestor_evidencia_produccion_v2.sql`.
 4. Ejecutar la importacion.
 
 ### 5. Revisar conexion
@@ -216,10 +216,11 @@ Desde phpMyAdmin:
 Abrir `conexion.php` y confirmar:
 
 ```php
-$servername = "localhost";
-$database = "gestor_evidencia";
+$servername = "127.0.0.1";
+$database = "gestor_evidencia_produccion";
 $username = "root";
 $password = "";
+$port = 3308;
 ```
 
 Estos valores corresponden a una instalacion local comun de XAMPP.
@@ -249,7 +250,7 @@ fpdf/fpdf.php
 En el navegador:
 
 ```text
-http://localhost/gestor_evidencia/login.php
+http://localhost/gestor_evidencias/public/login.php
 ```
 
 ## Instalacion en servidor LAMP
@@ -277,7 +278,7 @@ FLUSH PRIVILEGES;
 ### 3. Importar SQL
 
 ```bash
-mysql -u gestor_user -p gestor_evidencia < sql/gestor_evidencia.sql
+mysql -u gestor_user -p gestor_evidencia_produccion < sql/gestor_evidencia_produccion_v2.sql
 ```
 
 ### 4. Configurar conexion

@@ -3,7 +3,7 @@
   $roleClass = 'student';
   $currentUser = ['name' => 'Ana García', 'email' => 'ana.garcia@universidad.edu'];
   include COMPONENTS_DIR . '/layout/header.php';
-  include 'left-menu.php';
+  include COMPONENTS_DIR . '/layout/left-menu.php';
 ?>
 
 <div class="space-y-6">

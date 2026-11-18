@@ -1,16 +1,19 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-include 'validacion.php';
-include CONFIG_DIR . '/conexion.php';
+if (!defined('BASE_DIR')) define('BASE_DIR', realpath(__DIR__ . '/../..'));
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/evidencias.php';
 
-$user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
+$usuarioActual = evidenciaUsuarioActual($conn);
+$user_id = (int)$usuarioActual['id_usuario'];
 
 $id_evidencia = isset($_POST['id_evidencia']) ? (int)$_POST['id_evidencia'] : 0;
 if ($id_evidencia <= 0) { echo json_encode(['status'=>'error','message'=>'Falta id_evidencia']); exit; }
 
 // evidence
-$sql = "SELECT e.id_evidencia, e.id_docente, e.id_tipo_evidencia FROM evidencias e WHERE e.id_evidencia = ?";
+$sql = "SELECT e.id_evidencia, e.id_docente, e.id_tipo_evidencia FROM evidencias e WHERE e.id_evidencia = ? AND e.ocultar = 0";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param('i', $id_evidencia);
 $stmt->execute();
@@ -19,7 +22,7 @@ $evi = $re ? $re->fetch_assoc() : null;
 $stmt->close();
 
 if (!$evi) { echo json_encode(['status'=>'error','message'=>'Evidencia no encontrada']); exit; }
-if (!($user_role === 4 && (int)$evi['id_docente'] === $user_id)) {
+if (!evidenciaPuedeEditar($usuarioActual, $evi)) {
   echo json_encode(['status'=>'error','message'=>'No autorizado para editar']); exit;
 }
 
@@ -39,8 +42,17 @@ $stmt->close();
 $conn->begin_transaction();
 
 try {
-  $baseUploadDir = __DIR__ . '/uploads/files';
-  if (!is_dir($baseUploadDir)) @mkdir($baseUploadDir, 0775, true);
+  $baseUploadDir = BASE_DIR . '/uploads/files';
+  if (!is_dir($baseUploadDir) && !mkdir($baseUploadDir, 0775, true) && !is_dir($baseUploadDir)) {
+    throw new Exception('No se pudo crear la carpeta de archivos.');
+  }
+  $stmtOldFiles = $conn->prepare('SELECT valor_archivo FROM evidencia_valores_atributo WHERE id_evidencia = ? AND valor_archivo IS NOT NULL AND valor_archivo <> ?');
+  $emptyFilename = '';
+  $stmtOldFiles->bind_param('is', $id_evidencia, $emptyFilename);
+  $stmtOldFiles->execute();
+  $oldFileNames = array_column($stmtOldFiles->get_result()->fetch_all(MYSQLI_ASSOC), 'valor_archivo');
+  $stmtOldFiles->close();
+  $newlyUploadedFiles = [];
 
   foreach ($attrs as $a) {
     $aid  = (int)$a['id_ate'];
@@ -74,6 +86,17 @@ try {
     // Validaciones previas
     if ($unico && $cnt > 1) {
       throw new Exception("El atributo {$a['nombre_atributo']} es único y no puede tener múltiples valores.");
+    }
+
+    $existingFilesByIndex = [];
+    if ($gs === 'archivo') {
+      $old = $conn->prepare('SELECT indice, valor_archivo FROM evidencia_valores_atributo WHERE id_evidencia = ? AND id_ate = ?');
+      $old->bind_param('ii', $id_evidencia, $aid);
+      $old->execute();
+      foreach ($old->get_result()->fetch_all(MYSQLI_ASSOC) as $oldValue) {
+        $existingFilesByIndex[(int)$oldValue['indice']] = (string)$oldValue['valor_archivo'];
+      }
+      $old->close();
     }
 
     // Borrar existentes
@@ -141,8 +164,8 @@ try {
         }
         $val_bool = ($raw === '1') ? 1 : 0;
       } elseif ($gs === 'archivo') {
-        // archivo opcional si no se carga nada; si requerido y no hay existente, debe venir
-        $fileName = null;
+        // Al editar se conserva el archivo existente si no se selecciona uno nuevo.
+        $fileName = $existingFilesByIndex[$indice] ?? null;
         if ($has_files) {
           $fn   = $_FILES['valor_archivo']['name'][$aid][$i] ?? null;
           $tmp  = $_FILES['valor_archivo']['tmp_name'][$aid][$i] ?? null;
@@ -153,24 +176,23 @@ try {
             if ($size > 10 * 1024 * 1024) throw new Exception("{$a['nombre_atributo']}: archivo excede 10MB.");
 
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime  = finfo_file($finfo, $tmp);
-            finfo_close($finfo);
-
-            $okMimes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
-            if (!in_array($mime, $okMimes, true)) throw new Exception("{$a['nombre_atributo']}: tipo de archivo no permitido.");
+            $mime  = $finfo ? finfo_file($finfo, $tmp) : false;
+            if ($finfo) finfo_close($finfo);
 
             $ext = strtolower(pathinfo($fn, PATHINFO_EXTENSION));
-            $safeSlug = preg_replace('/[^a-z0-9_-]+/i', '-', $a['slug']);
-            $fileName = 'attr_e'.$id_evidencia.'_a'.$aid.'_'.date('YmdHis').'_'.bin2hex(random_bytes(3)).'.'.$ext;
+            $validTypes = ['application/pdf'=>['pdf'], 'image/png'=>['png'], 'image/jpeg'=>['jpg','jpeg'], 'image/webp'=>['webp']];
+            if (!$mime || !isset($validTypes[$mime]) || !in_array($ext, $validTypes[$mime], true)) {
+              throw new Exception("{$a['nombre_atributo']}: tipo de archivo no permitido.");
+            }
+
+            $fileName = 'attr_e'.$id_evidencia.'_a'.$aid.'_'.date('YmdHis').'_'.bin2hex(random_bytes(4)).'.'.$ext;
             $dest = $baseUploadDir . '/' . $fileName;
             if (!move_uploaded_file($tmp, $dest)) throw new Exception("{$a['nombre_atributo']}: no se pudo guardar el archivo.");
+            $newlyUploadedFiles[] = $fileName;
           }
         }
-        // si requerido y nada subido, no insertamos (pero podrías exigirlo)
         if (!$fileName) {
           if ($req) {
-            // Requerido: si no sube nada en esta edición, lo tomamos como error
-            // (alternativa: permitir mantener existente; aquí se reemplaza completamente)
             throw new Exception("{$a['nombre_atributo']}: archivo requerido.");
           } else {
             continue;
@@ -218,9 +240,24 @@ try {
     }
   }
 
+  $stmtCurrentFiles = $conn->prepare('SELECT valor_archivo FROM evidencia_valores_atributo WHERE id_evidencia = ? AND valor_archivo IS NOT NULL AND valor_archivo <> ?');
+  $stmtCurrentFiles->bind_param('is', $id_evidencia, $emptyFilename);
+  $stmtCurrentFiles->execute();
+  $currentFileNames = array_fill_keys(array_column($stmtCurrentFiles->get_result()->fetch_all(MYSQLI_ASSOC), 'valor_archivo'), true);
+  $stmtCurrentFiles->close();
   $conn->commit();
+  foreach (array_unique($oldFileNames) as $oldFileName) {
+    if (!isset($currentFileNames[$oldFileName])) {
+      $oldPath = $baseUploadDir . '/' . basename($oldFileName);
+      if (is_file($oldPath)) @unlink($oldPath);
+    }
+  }
   echo json_encode(['status'=>'ok']);
 } catch (Exception $ex) {
   $conn->rollback();
+  foreach ($newlyUploadedFiles ?? [] as $newFileName) {
+    $newPath = ($baseUploadDir ?? '') . '/' . basename($newFileName);
+    if ($baseUploadDir && is_file($newPath)) @unlink($newPath);
+  }
   echo json_encode(['status'=>'error','message'=>$ex->getMessage()]);
 }

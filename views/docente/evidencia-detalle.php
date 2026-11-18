@@ -9,15 +9,24 @@
  * - Modal de edición (sólo si puede editar)
  */
 
-include 'validacion.php';
-include CONFIG_DIR . '/conexion.php';
+require_once __DIR__ . '/../../config/paths.php';
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/evidencias.php';
 
-$user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
+$usuarioActual = evidenciaUsuarioActual($conn);
+$user_id = (int)$usuarioActual['id_usuario'];
+$user_role = (int)$usuarioActual['rol'];
+if ($user_id <= 0) {
+  $_SESSION = [];
+  session_destroy();
+  header('Location: ' . BASE_URL . '/public/login.php');
+  exit;
+}
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id <= 0) {
-  header('Location: gestion-evidencias.php');
+  header('Location: ' . BASE_URL . '/views/docente/gestion-evidencias.php');
   exit;
 }
 
@@ -28,7 +37,7 @@ $sql = "SELECT e.id_evidencia, e.titulo, e.archivo, e.fecha_subida,
         FROM evidencias e
         LEFT JOIN usuarios u ON u.id_usuario = e.id_docente
         LEFT JOIN tipos_de_evidencia t ON t.id_tipo_evidencia = e.id_tipo_evidencia
-        WHERE e.id_evidencia = ?";
+        WHERE e.id_evidencia = ? AND e.ocultar = 0";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param('i', $id);
 $stmt->execute();
@@ -37,26 +46,27 @@ $evi = $res ? $res->fetch_assoc() : null;
 $stmt->close();
 
 if (!$evi) {
-  header('Location: gestion-evidencias.php');
+  header('Location: ' . BASE_URL . '/views/docente/gestion-evidencias.php');
   exit;
 }
 
 // Si es docente, debe ser dueño
-if ($user_role === 4 && (int)$evi['id_docente'] !== $user_id) {
+if (!evidenciaPuedeVer($conn, $usuarioActual, $evi)) {
   header('Location: ' . BASE_URL . '/views/comunes/index.php');
   exit;
 }
 
-$canEdit = ($user_role === 4 && (int)$evi['id_docente'] === $user_id);
+$canEdit = evidenciaPuedeEditar($usuarioActual, $evi);
 
 // ==== Datos para vista previa del archivo ====
 $archivoRaw   = (string)($evi['archivo'] ?? '');
 $archivoBase  = basename($archivoRaw); // evita traversal
-$uploadUrlDir = 'uploads/files/';
-$uploadFsDir  = __DIR__ . '/uploads/files/';
+$uploadFsDir  = BASE_DIR . '/uploads/files/';
 
 $hasFile   = ($archivoBase !== '');
-$fileUrl   = $hasFile ? ($uploadUrlDir . rawurlencode($archivoBase)) : '';
+$fileUrl   = $hasFile ? (BASE_URL . '/controllers/docente/evidencia-archivo.php?id=' . $id) : '';
+$fileContentUrl = $hasFile ? $fileUrl . '&contenido=1' : '';
+$fileDownloadUrl = $hasFile ? $fileUrl . '&descargar=1' : '';
 $fileFs    = $hasFile ? ($uploadFsDir . $archivoBase) : '';
 $fileOk    = $hasFile && is_file($fileFs) && is_readable($fileFs);
 $ext       = $fileOk ? strtolower(pathinfo($archivoBase, PATHINFO_EXTENSION)) : '';
@@ -65,15 +75,15 @@ $isImg     = $fileOk && in_array($ext, ['png','jpg','jpeg','webp'], true);
 
 $LEFT_ACTIVE_OVERRIDE = 'gestion-evidencias.php';
 include COMPONENTS_DIR . '/layout/header.php';
-include 'left-menu.php';
+include COMPONENTS_DIR . '/layout/left-menu.php';
 ?>
 <section class="space-y-6">
   <header class="flex items-center justify-between" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
     <div>
       <h1 class="text-2xl font-semibold">Detalle de evidencia</h1>
       <p class="text-muted-foreground" style="max-width:900px;">
-        Tipo: <strong><?= htmlspecialchars($evi['nombre_tipo']) ?></strong>
-        — <?= htmlspecialchars($evi['desc_tipo'] ?? '') ?>
+        Tipo: <strong><?= htmlspecialchars($evi['nombre_tipo'] ?? 'Tipo no disponible', ENT_QUOTES, 'UTF-8') ?></strong>
+        — <?= htmlspecialchars($evi['desc_tipo'] ?? '', ENT_QUOTES, 'UTF-8') ?>
       </p>
     </div>
 
@@ -97,18 +107,18 @@ include 'left-menu.php';
     <div class="card-content" style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between;">
       <div>
         <div class="text-sm text-muted-foreground">Título</div>
-        <div class="text-lg font-medium"><?= htmlspecialchars($evi['titulo'] ?: '—') ?></div>
+        <div class="text-lg font-medium"><?= htmlspecialchars($evi['titulo'] ?: '—', ENT_QUOTES, 'UTF-8') ?></div>
       </div>
       <div>
         <div class="text-sm text-muted-foreground">Docente</div>
-        <div><?= htmlspecialchars(trim(($evi['nombre'] ?? '').' '.($evi['apellidop'] ?? '').' '.($evi['apellidom'] ?? '')) ?: '—') ?></div>
+        <div><?= htmlspecialchars(trim(($evi['nombre'] ?? '').' '.($evi['apellidop'] ?? '').' '.($evi['apellidom'] ?? '')) ?: '—', ENT_QUOTES, 'UTF-8') ?></div>
       </div>
       <div>
         <div class="text-sm text-muted-foreground">Archivo</div>
         <?php if ($fileOk): ?>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <a class="btn" href="<?= $fileUrl ?>" download="<?= htmlspecialchars($archivoBase) ?>">Descargar archivo</a>
-            <a class="btn" href="<?= $fileUrl ?>" target="_blank" rel="noopener">Abrir en pestaña</a>
+            <a class="btn" href="<?= htmlspecialchars($fileDownloadUrl, ENT_QUOTES, 'UTF-8') ?>">Descargar archivo</a>
+            <a class="btn" href="<?= htmlspecialchars($fileUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener">Abrir en pestaña</a>
           </div>
         <?php else: ?>
           <span class="badge secondary">Sin archivo</span>
@@ -116,7 +126,7 @@ include 'left-menu.php';
       </div>
       <div>
         <div class="text-sm text-muted-foreground">Subida</div>
-        <div><span class="badge"><?= $evi['fecha_subida'] ? date('Y-m-d H:i', strtotime($evi['fecha_subida'])) : '—' ?></span></div>
+        <div><span class="badge"><?= !empty($evi['fecha_subida']) && strtotime($evi['fecha_subida']) !== false ? date('Y-m-d H:i', strtotime($evi['fecha_subida'])) : '—' ?></span></div>
       </div>
     </div>
   </div>
@@ -133,36 +143,36 @@ include 'left-menu.php';
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;">
           <h2 class="text-xl font-semibold">Vista previa del archivo</h2>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <a class="btn" href="<?= $fileUrl ?>" download="<?= htmlspecialchars($archivoBase) ?>">Descargar</a>
-            <a class="btn" href="<?= $fileUrl ?>" target="_blank" rel="noopener">Abrir en pestaña</a>
+            <a class="btn" href="<?= htmlspecialchars($fileDownloadUrl, ENT_QUOTES, 'UTF-8') ?>">Descargar</a>
+            <a class="btn" href="<?= htmlspecialchars($fileUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener">Abrir en pestaña</a>
           </div>
         </div>
 
         <?php if ($isPdf): ?>
           <!-- PDF embebido -->
           <object
-            data="<?= $fileUrl ?>#toolbar=1&navpanes=0&scrollbar=1"
+            data="<?= htmlspecialchars($fileContentUrl, ENT_QUOTES, 'UTF-8') ?>#toolbar=1&navpanes=0&scrollbar=1"
             type="application/pdf"
             width="100%"
             height="720"
             style="border:1px solid var(--border); border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,.06);">
               <p>
                 No fue posible mostrar el PDF embebido.
-                <a class="link" href="<?= $fileUrl ?>" target="_blank" rel="noopener">Ábrelo en una pestaña</a>.
+                <a class="link" href="<?= htmlspecialchars($fileUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener">Ábrelo en una pestaña</a>.
               </p>
           </object>
         <?php elseif ($isImg): ?>
           <!-- Imagen responsiva -->
           <div style="width:100%; overflow:auto;">
             <img
-              src="<?= $fileUrl ?>"
+              src="<?= htmlspecialchars($fileContentUrl, ENT_QUOTES, 'UTF-8') ?>"
               alt="Vista previa de la evidencia"
               style="max-width:100%; height:auto; display:block; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 16px rgba(0,0,0,.06);" />
           </div>
         <?php else: ?>
           <div class="alert">
             Este formato no puede previsualizarse aquí. Puedes
-            <a class="link" href="<?= $fileUrl ?>" target="_blank" rel="noopener">abrirlo</a> o <a class="link" href="<?= $fileUrl ?>" download>descargarlo</a>.
+            <a class="link" href="<?= htmlspecialchars($fileUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener">abrirlo</a> o <a class="link" href="<?= htmlspecialchars($fileDownloadUrl, ENT_QUOTES, 'UTF-8') ?>">descargarlo</a>.
           </div>
         <?php endif; ?>
       </div>
@@ -175,14 +185,14 @@ include 'left-menu.php';
 <!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-<?php if ($canEdit && file_exists('modal-editar-evidencia-detalle.php')) include 'modal-editar-evidencia-detalle.php'; ?>
+<?php if ($canEdit) include COMPONENTS_DIR . '/modals/modal-editar-evidencia-detalle.php'; ?>
 
 <script>
 const EVID_ID = <?= (int)$evi['id_evidencia'] ?>;
 const CAN_EDIT = <?= $canEdit ? 'true' : 'false' ?>;
 
 function loadDetalle(){
-  const url = 'vista-evidencia-detalle.php?id=' + EVID_ID + '&r=' + Date.now();
+  const url = '<?= BASE_URL ?>/views/docente/vista-evidencia-detalle.php?id=' + EVID_ID + '&r=' + Date.now();
   const xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function(){
     if (xhr.readyState === 4) {
@@ -204,4 +214,4 @@ document.getElementById('btnOpenEdit')?.addEventListener('click', function(){
 <?php endif; ?>
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include COMPONENTS_DIR . '/layout/footer.php'; ?>

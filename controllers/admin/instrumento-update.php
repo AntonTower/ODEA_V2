@@ -1,8 +1,10 @@
 <?php
 // instrumento-update.php
 header('Content-Type: application/json; charset=utf-8');
-require_once 'conexion.php';
-require_once 'permisos-instrumentos.php';
+if (!defined('BASE_DIR')) define('BASE_DIR', realpath(__DIR__ . '/../..'));
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once BASE_DIR . '/views/evaluador/permisos-instrumentos.php';
 exigirGestion($conn, 'instrumentos.php');
 
 function jexit($ok, $msg = '', $extra = []) {

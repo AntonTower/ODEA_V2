@@ -1,9 +1,11 @@
 <?php
 // evaluacion-get.php
 header('Content-Type: application/json; charset=utf-8');
-include 'validacion.php';
-include CONFIG_DIR . '/conexion.php';
-require_once 'permisos-instrumentos.php';
+if (!defined('BASE_DIR')) define('BASE_DIR', realpath(__DIR__ . '/../..'));
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once BASE_DIR . '/views/evaluador/permisos-instrumentos.php';
 $usuarioActual = usuarioActualInstrumentos($conn);
 $alcance = alcanceInstrumentos($usuarioActual);
 
@@ -22,7 +24,7 @@ if ($id <= 0) jexit(false,'Parámetros inválidos');
 $sqlE = "SELECT e.id_evidencia, e.id_docente, e.id_tipo_evidencia, t.nombre_tipo
          FROM evidencias e
          LEFT JOIN tipos_de_evidencia t ON t.id_tipo_evidencia = e.id_tipo_evidencia
-         WHERE e.id_evidencia = ?";
+         WHERE e.id_evidencia = ? AND e.ocultar = 0";
 $stmtE = $conn->prepare($sqlE);
 $stmtE->bind_param('i', $id);
 $stmtE->execute();
@@ -31,6 +33,8 @@ $evi = $re ? $re->fetch_assoc() : null;
 $stmtE->close();
 
 if (!$evi) jexit(false,'Evidencia no encontrada');
+
+if (!in_array($user_role, [1, 2, 3], true)) jexit(false, 'No autorizado para evaluar.');
 
 // Docente solo su evidencia
 if ($user_role === 4 && (int)$evi['id_docente'] !== (int)$user_id) {

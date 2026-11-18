@@ -22,7 +22,7 @@ La aplicacion se apoya en:
 |       `-- favicon.ico
 |-- fpdf/                  # Libreria FPDF, ignorada por Git
 |-- sql/
-|   `-- gestor_evidencia.sql
+|   `-- gestor_evidencia_produccion_v2.sql
 |-- styles/
 |   |-- global.css
 |   `-- global-old.css
@@ -41,7 +41,7 @@ La conexion se define en `conexion.php`:
 
 ```php
 $servername = "localhost";
-$database = getenv("GESTOR_DB_NAME") ?: "gestor_evidencia_asignaciones";
+$database = getenv("GESTOR_DB_NAME") ?: "gestor_evidencia_produccion";
 $username = "root";
 $password = "";
 ```
@@ -51,7 +51,7 @@ Para produccion se recomienda cambiar estos valores por un usuario especifico de
 El archivo SQL completo para la nueva version es:
 
 ```text
-sql/gestor_evidencia_asignaciones.sql
+sql/gestor_evidencia_produccion_v2.sql
 ```
 
 Este archivo contiene:
@@ -512,7 +512,7 @@ Para despliegue en produccion se recomienda:
 
 ## Asignaciones por instrumento (2026-10-07)
 
-La instalacion y conversion se describen en [sql/README_asignaciones.md](sql/README_asignaciones.md).
+La instalacion y la base de datos vigente se describen en [sql/README_produccion.md](../sql/README_produccion.md).
 El SQL original queda como respaldo; la aplicacion utiliza la nueva base independiente.
 
 - `campos-instrumentos-evaluador.php` agrega seleccion multiple al alta y edicion

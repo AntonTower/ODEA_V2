@@ -1,274 +1,105 @@
 <?php
-/**
- * LEFT MENU (sidebar) dinámico por BD
- * Incluir con: include COMPONENTS_DIR . '/layout/left-menu.php';
- *
- * Requisitos:
- * - $_SESSION['ROL'] = id_rol del usuario autenticado.
- * - Tablas: iconos, menu_pagina, menu_rol.
- * - Conexión $conn (si no existe, se incluye config/conexion.php).
- *
- * Comportamiento:
- * - Escritorio (>=1024px): colapsable con persistencia localStorage.
- * - Móvil/Tablet (<1024px): off-canvas con FAB/backdrop.
- * - "is-active" automático por URL actual.
- * - Si no hay sesión o no hay permisos, se muestra un fallback a login.php
- */
-
-if (session_status() === PHP_SESSION_NONE) {
-  session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
 }
 
-require_once __DIR__ . '/../../config/paths.php';
-
-$user_role = $_SESSION['ROL'] ?? null;
-
-// Carga de conexión si no está definida
-if (!isset($conn)) {
-  require_once CONFIG_DIR . '/conexion.php';
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../..'));
 }
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/menu_config.php';
 
-// Consulta de páginas por rol
-$pages = [];
-if ($user_role !== null) {
-  $sql = "SELECT
-    mp.id_mp, mp.nombre_pagina, mp.archivo, ic.imagen AS svg
-    FROM menu_pagina mp
-    INNER JOIN menu_rol mr ON mr.id_pagina = mp.id_mp AND mr.id_rol = ?
-    INNER JOIN iconos ic ON ic.id_icono = mp.id_icono
-    WHERE COALESCE(mp.ocultar,0) = 0 AND COALESCE(mr.ocultar,0) = 0
-    ORDER BY mp.id_mp
-  ";
-  if ($stmt = $conn->prepare($sql)) {
-    $stmt->bind_param('i', $user_role);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    while ($row = $res->fetch_assoc()) {
-      $pages[] = $row;
-    }
-    $stmt->close();
-  }
+$user_role = (int) ($_SESSION['ROL'] ?? 0);
+$currentFile = strtolower(basename(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: ''));
+$activeOverride = strtolower(basename($LEFT_ACTIVE_OVERRIDE ?? ''));
+if ($activeOverride !== '') {
+    $currentFile = $activeOverride;
 }
-
-// Fallback si no hay sesión o no hay páginas para el rol
-$renderFallback = (empty($pages));
-$legacyPageRoutes = [
-    'index.php' => 'views/comunes/index.php',
-    'perfil.php' => 'views/comunes/perfil.php',
-    'gestion-usuarios.php' => 'views/admin/gestion-usuarios.php',
-    'tipos-evidencia.php' => 'views/admin/tipos-evidencia.php',
-    'gestion-evidencias.php' => 'views/docente/gestion-evidencias.php',
-    'instrumentos.php' => 'views/admin/instrumentos.php',
-    'evaluacion.php' => 'views/evaluador/evaluacion.php',
-    'gestion-menu.php' => 'views/admin/gestion-menu.php',
-    'calificaciones-recibidas.php' => 'views/docente/calificaciones-recibidas.php',
-    'teacher_dashboard.php' => 'views/docente/teacher_dashboard.php',
-];
-
-// Detectar ruta actual o forzarla (override) para "is-active"
-$overrideActiveFile = $overrideActiveFile ?? ($LEFT_ACTIVE_OVERRIDE ?? null);
-$currentFile = strtolower(
-  basename(
-    $overrideActiveFile ? $overrideActiveFile : (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '')
-  )
-);
-
 ?>
-<!-- Backdrop para off-canvas en móviles -->
-<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
-
-<aside class="sidebar" id="appSidebar" aria-label="Menú lateral de la plataforma">
-  <!-- Header del sidebar -->
+<aside class="sidebar" id="appSidebar" aria-label="Menú principal">
   <div class="sidebar-header">
-    <div style="display:flex; align-items:center; min-width:0;">
-      <div class="brand-mini" aria-hidden="true" title="Plataforma Académica">
-        <!-- Birrete -->
-        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:16px;height:16px;">
-          <path d="M22 10L12 5 2 10l10 5 10-5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-          <path d="M6 12v4c2 1.5 4 2 6 2s4-.5 6-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <h2 class="brand-title">Menú</h2>
+    <div class="brand-mini" aria-hidden="true">
+      <svg class="icon" viewBox="0 0 24 24" fill="none">
+        <path d="M22 10L12 5 2 10l10 5 10-5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M6 12v4c2 1.5 4 2 6 2s4-.5 6-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
     </div>
-
-    <!-- Botón SIEMPRE visible en escritorio (colapsa/expande) -->
-    <button id="sidebarCollapseBtn" class="collapse-btn" type="button" title="Contraer menú" aria-label="Contraer menú" aria-pressed="false">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:16px;height:16px;">
-        <path d="M11 19l-7-7 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M20 19l-7-7 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <span class="brand-title">ODEA</span>
+    <button id="sidebarCollapseBtn" class="collapse-btn" type="button" title="Contraer menú" aria-label="Contraer menú" aria-expanded="true">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:16px;height:16px">
+        <path d="M11 19l-7-7 7-7M20 19l-7-7 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
   </div>
 
-  <!-- Zona desplazable -->
   <div class="sidebar-scroll">
     <nav class="menu" id="sidebarMenu">
       <div class="menu-section">Navegación</div>
-
-      <?php if (!$renderFallback): ?>
-        <?php foreach ($pages as $p): 
-          $archivoRuta = $p['archivo'];
-          $isActive = (strtolower(basename($archivoRuta)) === $currentFile) ? ' is-active' : '';
-
-          if (strpos($archivoRuta, '/') === false && isset($legacyPageRoutes[strtolower($archivoRuta)])) {
-              $archivoRuta = $legacyPageRoutes[strtolower($archivoRuta)];
-          }
-          
-          // Construcción de la URL absoluta con BASE_URL
-          if (strpos($archivoRuta, 'http') === 0 || strpos($archivoRuta, '/') === 0) {
-              $fullUrl = $archivoRuta;
-          } else {
-              $fullUrl = BASE_URL . '/' . ltrim($archivoRuta, '/');
-          }
-        ?>
-          <a class="menu-item<?= $isActive ?>" href="<?= htmlspecialchars($fullUrl) ?>" title="<?= htmlspecialchars($p['nombre_pagina']) ?>">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <!-- SVG desde BD -->
-              <?= $p['svg'] ?>
-            </svg>
-            <span class="label"><?= htmlspecialchars($p['nombre_pagina']) ?></span>
-          </a>
+      <?php if ($user_role > 0): ?>
+        <?php foreach ($MENU_CONFIG as $item): ?>
+          <?php if (in_array($user_role, $item['roles'], true)):
+              $itemFile = strtolower(basename($item['ruta']));
+              $isActive = $itemFile === $currentFile ? ' is-active' : '';
+          ?>
+            <a class="menu-item<?= $isActive ?>" href="<?= htmlspecialchars(BASE_URL . '/' . ltrim($item['ruta'], '/'), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars($item['titulo'], ENT_QUOTES, 'UTF-8') ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <?= $item['icono'] ?>
+              </svg>
+              <span class="label"><?= htmlspecialchars($item['titulo'], ENT_QUOTES, 'UTF-8') ?></span>
+            </a>
+          <?php endif; ?>
         <?php endforeach; ?>
       <?php else: ?>
-        <!-- Fallback sin sesión/permisos: mostrar Login -->
-        <a class="menu-item<?= ($currentFile === 'login.php' ? ' is-active' : '') ?>" href="<?= BASE_URL ?>/public/login.php" title="Login">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="7.5" cy="15.5" r="3.5" stroke="currentColor" stroke-width="1.8"/>
-            <path d="M10.5 15.5H22M15 12v7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
-          <span class="label">Login</span>
+        <a class="menu-item" href="<?= htmlspecialchars(BASE_URL . '/public/login.php', ENT_QUOTES, 'UTF-8') ?>">
+          <span class="label">Iniciar sesión</span>
         </a>
       <?php endif; ?>
     </nav>
   </div>
 </aside>
-
-<!-- Botón flotante móvil para abrir/cerrar -->
-<button id="sidebarFab" class="sidebar-fab" type="button" aria-label="Abrir menú">
-  <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
-    <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-  </svg>
-</button>
+<button class="sidebar-backdrop" id="sidebarBackdrop" type="button" aria-label="Cerrar menú"></button>
 
 <script>
-(function(){
-  const mqDesktop = window.matchMedia('(min-width: 1024px)');
+(function () {
   const body = document.body;
-  const collapseBtn = document.getElementById('sidebarCollapseBtn');
-  const fab = document.getElementById('sidebarFab');
-  const backdrop = document.getElementById('sidebarBackdrop');
-  const menu = document.getElementById('sidebarMenu');
+  const sidebar = document.getElementById('appSidebar');
+  const collapseButton = document.getElementById('sidebarCollapseBtn');
   const hamburger = document.getElementById('headerHamburger');
+  const backdrop = document.getElementById('sidebarBackdrop');
+  if (!body || !sidebar) return;
 
-  body.classList.add('has-sidebar');
-  let desktopCollapsed = false;
-  try { desktopCollapsed = localStorage.getItem('sidebarCollapsed') === 'true'; } catch (e) {}
+  const desktop = window.matchMedia('(min-width: 1024px)');
+  let collapsed = false;
+  try { collapsed = localStorage.getItem('odeaSidebarCollapsed') === 'true'; } catch (e) {}
 
-  function setOpen(open) {
-    body.classList.toggle('sidebar-open', open && !mqDesktop.matches);
-    [fab, hamburger].forEach(button => {
-      if (!button) return;
-      button.setAttribute('aria-controls', 'appSidebar');
-      button.setAttribute('aria-expanded', String(open && !mqDesktop.matches));
-      button.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
-    });
-  }
-
-  function resizeTables() {
-    requestAnimationFrame(() => {
-      if (!window.jQuery || !jQuery.fn.dataTable) return;
-      const tables = jQuery.fn.dataTable.tables({ visible: true, api: true });
-      tables.columns.adjust();
-      if (tables.responsive) tables.responsive.recalc();
-    });
-  }
-
-  function setBodyState() {
-    if (mqDesktop.matches) {
-      body.classList.remove('sidebar-offcanvas', 'sidebar-open');
-      const collapsed = desktopCollapsed;
-      body.classList.toggle('sidebar-collapsed', collapsed);
-      body.classList.toggle('sidebar-expanded', !collapsed);
-      updateCollapseButton(collapsed);
-    } else {
-      body.classList.add('sidebar-offcanvas');
-      body.classList.remove('sidebar-expanded', 'sidebar-collapsed');
-      body.classList.remove('sidebar-open');
-      updateCollapseButton(false);
+  function render() {
+    body.classList.add('has-sidebar');
+    body.classList.toggle('sidebar-collapsed', desktop.matches && collapsed);
+    body.classList.toggle('sidebar-expanded', desktop.matches && !collapsed);
+    if (collapseButton) {
+      collapseButton.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      collapseButton.setAttribute('title', collapsed ? 'Expandir menú' : 'Contraer menú');
+      collapseButton.setAttribute('aria-label', collapsed ? 'Expandir menú' : 'Contraer menú');
     }
-    setOpen(false);
-    resizeTables();
+    if (hamburger) hamburger.setAttribute('aria-expanded', body.classList.contains('sidebar-open') ? 'true' : 'false');
   }
+  function closeMobile() { body.classList.remove('sidebar-open'); render(); }
 
-  function updateCollapseButton(isCollapsed) {
-    const label = !mqDesktop.matches ? 'Cerrar menú' : (isCollapsed ? 'Expandir menú' : 'Contraer menú');
-    collapseBtn.setAttribute('title', label);
-    collapseBtn.setAttribute('aria-label', label);
-    collapseBtn.setAttribute('aria-pressed', isCollapsed ? 'true' : 'false');
-    collapseBtn.innerHTML = isCollapsed
-      ? `<svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:16px;height:16px;">
-           <path d="M13 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-           <path d="M4 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-         </svg>`
-      : `<svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:16px;height:16px;">
-           <path d="M11 19l-7-7 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-           <path d="M20 19l-7-7 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-         </svg>`;
-  }
-
-  function toggleCollapse(){
-    if (!mqDesktop.matches) { setOpen(false); return; }
-    const collapsed = body.classList.contains('sidebar-collapsed');
-    body.classList.toggle('sidebar-collapsed', !collapsed);
-    body.classList.toggle('sidebar-expanded', collapsed);
-    desktopCollapsed = !collapsed;
-    try { localStorage.setItem('sidebarCollapsed', String(!collapsed)); } catch (e) {}
-    updateCollapseButton(!collapsed);
-    resizeTables();
-  }
-
-  function toggleOffcanvas(){
-    if (!body.classList.contains('sidebar-offcanvas')) return;
-    setOpen(!body.classList.contains('sidebar-open'));
-  }
-
-  function ensureActive(){
-    const path = window.location.pathname.split('/').pop().toLowerCase();
-    const links = menu.querySelectorAll('a.menu-item');
-    let found = false;
-    links.forEach(a => {
-      const href = (a.getAttribute('href') || '').split('/').pop().toLowerCase();
-      if (href === path && path !== '') {
-        a.classList.add('is-active');
-        a.setAttribute('aria-current', 'page');
-        found = true;
-      }
-    });
-    if (!found && path === '') {
-      links.forEach(a => {
-        const href = (a.getAttribute('href') || '').split('/').pop().toLowerCase();
-        if (href === 'index.php') {
-          a.classList.add('is-active');
-          a.setAttribute('aria-current', 'page');
-        }
-      });
-    }
-  }
-
-  setBodyState();
-  ensureActive();
-  mqDesktop.addEventListener('change', setBodyState);
-
-  if (collapseBtn) collapseBtn.addEventListener('click', toggleCollapse);
-  if (fab) fab.addEventListener('click', toggleOffcanvas);
-  if (hamburger) hamburger.addEventListener('click', toggleOffcanvas);
-  if (backdrop) backdrop.addEventListener('click', () => setOpen(false));
-
-  document.addEventListener('keydown', (e)=> {
-    if (e.key === 'Escape' && body.classList.contains('sidebar-open')) {
-      setOpen(false);
-      if (hamburger) hamburger.focus();
-    }
+  render();
+  if (collapseButton) collapseButton.addEventListener('click', function () {
+    collapsed = !collapsed;
+    try { localStorage.setItem('odeaSidebarCollapsed', String(collapsed)); } catch (e) {}
+    render();
   });
+  if (hamburger) hamburger.addEventListener('click', function () {
+    body.classList.toggle('sidebar-open');
+    render();
+  });
+  if (backdrop) backdrop.addEventListener('click', closeMobile);
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') closeMobile();
+  });
+  if (desktop.addEventListener) desktop.addEventListener('change', closeMobile);
+  else if (desktop.addListener) desktop.addListener(closeMobile);
 })();
 </script>

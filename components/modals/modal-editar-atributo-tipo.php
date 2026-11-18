@@ -1,6 +1,5 @@
 <?php
 // modal-editar-atributo-tipo.php
-require_once 'conexion.php';
 
 // Cargar tipos de atributo para el <select>
 $tipos = [];
@@ -157,7 +156,7 @@ if ($resT = mysqli_query($conn, $qT)) {
 
   window.openEditarAtributoModal = function(id){
     form.reset();
-    fetch('atributo-tipo-get.php?id='+encodeURIComponent(id))
+    fetch('<?= BASE_URL ?>/controllers/admin/atributo-tipo-get.php?id='+encodeURIComponent(id))
       .then(r=>r.json())
       .then(d=>{
         if (d && d.status === 'ok' && d.atributo) {
@@ -214,7 +213,7 @@ if ($resT = mysqli_query($conn, $qT)) {
     btnSubmit.disabled = true;
     const fd = new FormData(form);
 
-    fetch('atributo-tipo-update.php', { method:'POST', body:fd })
+    fetch('<?= BASE_URL ?>/controllers/admin/atributo-tipo-update.php', { method:'POST', body:fd })
       .then(r=>r.json())
       .then(d=>{
         if (d && d.status === 'ok') {

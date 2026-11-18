@@ -75,7 +75,7 @@ if ($resR = mysqli_query($conn, $qR)) {
         </div>
       <?php 
         $prefijoUsuario = 'eu'; 
-        $campos_inst = COMPONENTS_DIR . '/modals/campos-instrumentos-evaluador.php';
+        $campos_inst = BASE_DIR . '/views/evaluador/campos-instrumentos-evaluador.php';
         if (file_exists($campos_inst)) include $campos_inst;
       ?>
       </form>

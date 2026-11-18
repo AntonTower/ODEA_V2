@@ -17,9 +17,15 @@ require_once __DIR__ . '/../../config/paths.php';
 
 require_once CONFIG_DIR . '/conexion.php';
 require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/evidencias.php';
 
-$user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
+$usuarioActual = evidenciaUsuarioActual($conn);
+$user_id = (int)$usuarioActual['id_usuario'];
+$user_role = (int)$usuarioActual['rol'];
+if ($user_id <= 0 || !in_array($user_role, [1, 2, 3, 4], true)) {
+  http_response_code($user_id <= 0 ? 401 : 403);
+  exit('<div class="card-content"><p>No tienes permiso para consultar estas evidencias.</p></div>');
+}
 
 $tipo = isset($_GET['tipo']) ? trim($_GET['tipo']) : '';
 $hasTipo = ($tipo !== '' && is_numeric($tipo));
@@ -52,6 +58,17 @@ $types  = '';
 if ($user_role === 4) {
   // Docente: solo sus evidencias
   $sql .= " AND e.id_docente = ? ";
+  $params[] = $user_id;
+  $types   .= 'i';
+} elseif ($user_role === 3) {
+  // Evaluador: solo evidencias de tipos asociados a instrumentos que tiene asignados.
+  $sql .= " AND EXISTS (
+              SELECT 1
+              FROM instrumento_tipo_evidencia ite
+              INNER JOIN evaluador_instrumento ei ON ei.id_instrumento = ite.id_instrumento
+              INNER JOIN instrumentos i ON i.id_instrumento = ite.id_instrumento AND i.activo = 1
+              WHERE ite.id_tipo_evidencia = e.id_tipo_evidencia AND ei.id_evaluador = ?
+            ) ";
   $params[] = $user_id;
   $types   .= 'i';
 }
@@ -122,11 +139,11 @@ $result = $stmt->get_result();
           if ($pct > 100) $pct = 100;
 
           // Ruta corregida usando BASE_URL
-          $href = $file ? (BASE_URL . '/uploads/files/' . rawurlencode($file)) : '';
+          $href = $file ? (BASE_URL . '/controllers/docente/evidencia-archivo.php?id=' . $id . '&descargar=1') : '';
 
           // Botón Descargar
           $btnDownload = $file ? '
-            <a class="btn" href="'.$href.'" download="'.htmlspecialchars($file).'" title="Descargar archivo">
+            <a class="btn" href="'.$href.'" title="Descargar archivo">
               <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
                 <path d="M12 3v12M7 10l5 5 5-5M5 19h14" stroke="#111827" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -135,17 +152,17 @@ $result = $stmt->get_result();
           // Acciones
           $btnDetalles = '
             <button class="btn" type="button" title="Ver detalles"
-                    onclick="openVerDetalles('.$id.')">
+                    data-evidence-action="details" data-id="'.$id.'">
               <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
                 <path d="M4 6h16M4 12h16M4 18h16" stroke="#10b981" stroke-width="1.8" stroke-linecap="round"/>
               </svg>
             </button>';
 
           // Editar: solo docentes (su propia evidencia)
-          $canEdit = ((int)$user_role === 4) && ((int)$row['id_docente'] === (int)$user_id);
+          $canEdit = in_array($user_role, [1, 2], true)
+            || ((int)$user_role === 4 && (int)$row['id_docente'] === $user_id);
           $btnEdit = $canEdit ? '
-            <button class="btn" type="button" title="Editar"
-                    onclick="openEditarEvidencia('.$id.')">
+            <button class="btn" type="button" title="Editar" data-evidence-action="edit" data-id="'.$id.'">
               <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
                 <path d="M3 17.25V21h3.75L19.81 7.94l-3.75-3.75L3 17.25z" stroke="#3b82f6" stroke-width="1.8" fill="none"/>
                 <path d="M14.06 4.19l3.75 3.75" stroke="#3b82f6" stroke-width="1.8"/>
@@ -153,11 +170,11 @@ $result = $stmt->get_result();
             </button>' : '';
 
           // Eliminar (soft): admin cualquiera; docente solo la suya
-          $canDelete = ((int)$user_role === 1) || (((int)$user_role === 4) && ((int)$row['id_docente'] === (int)$user_id));
-          $safeTit = htmlspecialchars($tit, ENT_QUOTES);
+          $canDelete = in_array($user_role, [1, 2], true)
+            || ((int)$user_role === 4 && (int)$row['id_docente'] === $user_id);
+          $safeTit = htmlspecialchars($tit, ENT_QUOTES, 'UTF-8');
           $btnDelete = $canDelete ? '
-            <button class="btn" type="button" title="Ocultar"
-                    onclick="openEliminarEvi('.$id.', \''.$safeTit.'\')">
+            <button class="btn" type="button" title="Ocultar" data-evidence-action="delete" data-id="'.$id.'" data-title="'.$safeTit.'">
               <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
                 <path d="M3 6h18M8 6l1-2h6l1 2M6 6l1 14h10l1-14" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/>
                 <path d="M10 11v6M14 11v6" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/>
@@ -168,14 +185,14 @@ $result = $stmt->get_result();
         <tr>
           <td></td>
           <td><?= $id ?></td>
-          <td class="font-medium"><?= htmlspecialchars($tit ?: '—') ?></td>
-          <td><span class="badge"><?= htmlspecialchars($tipoN) ?></span></td>
-          <td><?= htmlspecialchars($docN ?: '—') ?></td>
+          <td class="font-medium"><?= htmlspecialchars($tit ?: '—', ENT_QUOTES, 'UTF-8') ?></td>
+          <td><span class="badge"><?= htmlspecialchars($tipoN, ENT_QUOTES, 'UTF-8') ?></span></td>
+          <td><?= htmlspecialchars($docN ?: '—', ENT_QUOTES, 'UTF-8') ?></td>
 
           <!-- Botón descargar -->
           <td><?= $btnDownload ?></td>
 
-          <td><span class="badge" title="<?= htmlspecialchars($row['fecha_subida'] ?? '') ?>"><?= htmlspecialchars($date) ?></span></td>
+          <td><span class="badge" title="<?= htmlspecialchars($row['fecha_subida'] ?? '', ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($date, ENT_QUOTES, 'UTF-8') ?></span></td>
 
           <!-- Avance -->
           <td title="<?= $filledAttrs ?>/<?= $totalAttrs ?> atributos">

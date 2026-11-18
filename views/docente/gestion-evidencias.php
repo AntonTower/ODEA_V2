@@ -20,16 +20,31 @@ require_once __DIR__ . '/../../config/paths.php';
 require_once CONFIG_DIR . '/validacion.php';
 require_once CONFIG_DIR . '/conexion.php';
 require_once CONFIG_DIR . '/validacion-permiso.php';
+require_once CONFIG_DIR . '/evidencias.php';
+
+$usuarioActual = evidenciaUsuarioActual($conn);
+if ((int)$usuarioActual['id_usuario'] <= 0) {
+  $_SESSION = [];
+  session_destroy();
+  header('Location: ' . BASE_URL . '/public/login.php');
+  exit;
+}
+$user_id = (int)$usuarioActual['id_usuario'];
+$user_role = (int)$usuarioActual['rol'];
 
 include COMPONENTS_DIR . '/layout/header.php';
 include COMPONENTS_DIR . '/layout/left-menu.php';
 
-$user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
-
 // Tipos de evidencia (para filtro)
 $tipos = [];
-$qT = "SELECT id_tipo_evidencia, nombre_tipo FROM tipos_de_evidencia ORDER BY nombre_tipo ASC";
+$qT = $user_role === 3
+  ? "SELECT DISTINCT t.id_tipo_evidencia, t.nombre_tipo
+     FROM tipos_de_evidencia t
+     INNER JOIN instrumento_tipo_evidencia ite ON ite.id_tipo_evidencia = t.id_tipo_evidencia
+     INNER JOIN evaluador_instrumento ei ON ei.id_instrumento = ite.id_instrumento AND ei.id_evaluador = {$user_id}
+     INNER JOIN instrumentos i ON i.id_instrumento = ite.id_instrumento AND i.activo = 1
+     ORDER BY t.nombre_tipo ASC"
+  : "SELECT id_tipo_evidencia, nombre_tipo FROM tipos_de_evidencia ORDER BY nombre_tipo ASC";
 if ($rsT = mysqli_query($conn, $qT)) {
   while ($r = mysqli_fetch_assoc($rsT)) $tipos[] = $r;
 }
@@ -38,10 +53,13 @@ if ($rsT = mysqli_query($conn, $qT)) {
   <header class="flex items-center justify-between" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
     <div>
       <h1 class="text-2xl font-semibold">Gestión de evidencias</h1>
-      <p class="text-muted-foreground">Administra las evidencias subidas por los docentes. Archivos PDF o imágenes (máx. 10 MB).</p>
+      <p class="text-muted-foreground">
+        <?php if ($user_role === 3): ?>Consulta las evidencias de los instrumentos que tienes asignados.
+        <?php else: ?>Administra evidencias; los docentes solo pueden modificar las propias. Archivos PDF o imágenes (máx. 10 MB).<?php endif; ?>
+      </p>
     </div>
 
-    <?php if (in_array($user_role, [1,4], true)): ?>
+    <?php if (in_array($user_role, [1,2,4], true)): ?>
       <button class="btn btn-primary" id="openModalAgregarEvidencia" type="button" title="Agregar nueva evidencia">
         + Agregar Evidencia
       </button>
@@ -139,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadTableE(){
-  const url = 'vista-gestion-evidencias.php?tipo=' + encodeURIComponent(currentTipo) + '&r=' + Date.now();
+  const url = '<?= BASE_URL ?>/views/docente/vista-gestion-evidencias.php?tipo=' + encodeURIComponent(currentTipo) + '&r=' + Date.now();
   const xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function(){
     if (xhr.readyState === 4) {
@@ -178,6 +196,16 @@ function initDTE(){
     }
   });
 
+  $table.off('click.evidenceActions', 'button[data-evidence-action]')
+    .on('click.evidenceActions', 'button[data-evidence-action]', function(){
+      const id = this.dataset.id;
+      switch (this.dataset.evidenceAction) {
+        case 'details': window.openVerDetalles(id); break;
+        case 'edit': window.openEditarEvidencia(id); break;
+        case 'delete': window.openEliminarEvi(id, this.dataset.title || ''); break;
+      }
+    });
+
   const $search = $('#search');
   const $clear  = $('#clearSearch');
 
@@ -185,14 +213,14 @@ function initDTE(){
     const saved = dtE.state()?.search?.search || localStorage.getItem(SEARCH_KEY) || '';
     $search.val(saved);
     if (saved) dtE.search(saved).draw();
-    $search.on('input', function(){
+    $search.off('input.evidencias').on('input.evidencias', function(){
       const val = this.value;
       dtE.search(val).draw();
       localStorage.setItem(SEARCH_KEY, val);
     });
   }
   if ($clear.length) {
-    $clear.on('click', function(){
+    $clear.off('click.evidencias').on('click.evidencias', function(){
       if ($search.length) {
         $search.val('');
         localStorage.setItem(SEARCH_KEY, '');
@@ -228,7 +256,7 @@ window.openEliminarEvi = function(id, titulo){
   const backdrop = document.getElementById('dlgBackdropEvi');
   const txt = document.getElementById('dlgEliminarEviText');
 
-  if (txt) txt.innerHTML = '¿Ocultar la evidencia <strong>' + (__deleteEviName || ('#'+id)) + '</strong>?';
+  if (txt) txt.textContent = '¿Ocultar la evidencia ' + (__deleteEviName || ('#'+id)) + '?';
   if (dlg && backdrop) {
     dlg.setAttribute('data-open','true');
     backdrop.setAttribute('data-open','true');

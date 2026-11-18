@@ -1,45 +1,90 @@
 <?php
 // evidencia-insert.php
 header('Content-Type: application/json; charset=utf-8');
-require_once 'conexion.php';
-require_once 'validacion.php';
+if (!defined('BASE_DIR')) {
+  define('BASE_DIR', realpath(__DIR__ . '/../..'));
+}
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/evidencias.php';
 
 function jexit($ok, $msg = '', $extra = []) {
   echo json_encode(array_merge(['status' => $ok ? 'ok' : 'error', 'message' => $msg], $extra));
   exit;
 }
 
-$user_id = (int)($_SESSION['ID'] ?? 0);
-$user_role = (int)($_SESSION['ROL'] ?? 0);
+$usuarioActual = evidenciaUsuarioActual($conn);
+$user_id = (int)$usuarioActual['id_usuario'];
+$user_role = (int)$usuarioActual['rol'];
 
 
 // Permitir crear a admin y docentes
-if (!in_array($user_role, [1,4], true)) jexit(false, 'No tienes permisos para agregar evidencias.');
+if ($user_id <= 0) jexit(false, 'La sesión ya no es válida. Inicia sesión nuevamente.');
+if (!in_array($user_role, [1,2,4], true)) jexit(false, 'No tienes permisos para agregar evidencias.');
 
 // Inputs
 $titulo = isset($_POST['titulo']) ? trim($_POST['titulo']) : '';
 $id_tipo= isset($_POST['id_tipo_evidencia']) ? (int)$_POST['id_tipo_evidencia'] : 0;
 
 if (!$titulo || $id_tipo <= 0) jexit(false, 'Datos incompletos.');
+if (mb_strlen($titulo) > 255) jexit(false, 'El título no puede superar 255 caracteres.');
 
-if (!isset($_FILES['archivo']) || !is_uploaded_file($_FILES['archivo']['tmp_name'])) {
+$docenteId = $user_id;
+if (in_array($user_role, [1, 2], true)) {
+  $docenteId = (int)($_POST['id_docente'] ?? 0);
+  if ($docenteId <= 0) jexit(false, 'Selecciona el docente propietario de la evidencia.');
+  $docenteStmt = $conn->prepare('SELECT id_usuario FROM usuarios WHERE id_usuario = ? AND rol = 4 AND activo = 1');
+  $docenteStmt->bind_param('i', $docenteId);
+  $docenteStmt->execute();
+  $docenteValido = $docenteStmt->get_result()->num_rows > 0;
+  $docenteStmt->close();
+  if (!$docenteValido) jexit(false, 'El docente seleccionado no está activo o no existe.');
+}
+
+$tipoStmt = $conn->prepare('SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE id_tipo_evidencia = ?');
+$tipoStmt->bind_param('i', $id_tipo);
+$tipoStmt->execute();
+$tipoExiste = $tipoStmt->get_result()->num_rows > 0;
+$tipoStmt->close();
+if (!$tipoExiste) jexit(false, 'El tipo de evidencia seleccionado ya no existe.');
+
+$archivoSubido = $_FILES['archivo'] ?? null;
+if (!$archivoSubido || !isset($archivoSubido['error'])) {
   jexit(false, 'Debes seleccionar un archivo.');
+}
+if ((int)$archivoSubido['error'] !== UPLOAD_ERR_OK) {
+  $mensajeCarga = match ((int)$archivoSubido['error']) {
+    UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'El archivo supera el límite permitido por el servidor.',
+    UPLOAD_ERR_PARTIAL => 'El archivo se recibió incompleto. Intenta subirlo nuevamente.',
+    UPLOAD_ERR_NO_FILE => 'Debes seleccionar un archivo.',
+    UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE, UPLOAD_ERR_EXTENSION => 'El servidor no pudo recibir el archivo. Contacta al administrador.',
+    default => 'No se pudo recibir el archivo. Intenta nuevamente.',
+  };
+  jexit(false, $mensajeCarga);
+}
+if (empty($archivoSubido['tmp_name']) || !is_uploaded_file($archivoSubido['tmp_name'])) {
+  jexit(false, 'El archivo no se recibió correctamente. Intenta seleccionarlo otra vez.');
 }
 
 // Validaciones de archivo
 $maxSize = 10 * 1024 * 1024; // 10MB
-$allowedMime = ['application/pdf','image/jpeg','image/png','image/webp'];
-$allowedExt  = ['pdf','jpg','jpeg','png','webp'];
+$allowedFiles = [
+  'application/pdf' => ['pdf'],
+  'image/jpeg' => ['jpg', 'jpeg'],
+  'image/png' => ['png'],
+  'image/webp' => ['webp'],
+];
 
-$size = (int)$_FILES['archivo']['size'];
+$size = (int)$archivoSubido['size'];
 if ($size <= 0 || $size > $maxSize) jexit(false, 'Archivo demasiado grande (máx. 10 MB).');
 
-$finfo = finfo_open(FILEINFO_MIME_TYPE);
-$mime  = finfo_file($finfo, $_FILES['archivo']['tmp_name']);
-finfo_close($finfo);
+$finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : false;
+$mime  = $finfo ? finfo_file($finfo, $archivoSubido['tmp_name']) : false;
+if ($finfo) finfo_close($finfo);
 
-$ext = strtolower(pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION));
-if (!in_array($mime, $allowedMime, true) || !in_array($ext, $allowedExt, true)) {
+$ext = strtolower(pathinfo($archivoSubido['name'] ?? '', PATHINFO_EXTENSION));
+if (!$mime || !isset($allowedFiles[$mime]) || !in_array($ext, $allowedFiles[$mime], true)) {
   jexit(false, 'Tipo de archivo no permitido. Usa PDF o imagen (JPG/PNG/WEBP).');
 }
 
@@ -47,25 +92,25 @@ if (!in_array($mime, $allowedMime, true) || !in_array($ext, $allowedExt, true)) 
 $slug = preg_replace('/[^a-z0-9_]+/i', '_', strtolower($titulo));
 $slug = trim($slug, '_');
 if ($slug === '') $slug = 'evidencia';
-$rand = substr(md5(uniqid('', true)), 0, 6);
-$filename = $slug.'_'.date('Ymd_His').'_'.$rand.'.'.$ext;
+$slug = substr($slug, 0, 80);
+$filename = $slug.'_'.date('Ymd_His').'_'.bin2hex(random_bytes(4)).'.'.$ext;
 
-$destDir = __DIR__ . '/uploads/files';
-if (!is_dir($destDir)) {
-  if (!mkdir($destDir, 0775, true)) jexit(false, 'No se pudo crear el directorio de archivos.');
-}
-
+$destDir = BASE_DIR . '/uploads/files';
 $destPath = $destDir . '/' . $filename;
-if (!move_uploaded_file($_FILES['archivo']['tmp_name'], $destPath)) {
-  jexit(false, 'No se pudo mover el archivo.');
+if (!is_dir($destDir) && !mkdir($destDir, 0775, true) && !is_dir($destDir)) {
+  jexit(false, 'No se pudo crear la carpeta de archivos.');
+}
+if (!move_uploaded_file($archivoSubido['tmp_name'], $destPath)) {
+  jexit(false, 'No se pudo guardar el archivo en el servidor.');
 }
 
 // Insert
+try {
 $sql = "INSERT INTO evidencias (titulo, archivo, id_docente, id_tipo_evidencia, ocultar)
         VALUES (?, ?, ?, ?, 0)";
 $stmt = $conn->prepare($sql);
 if (!$stmt) jexit(false, 'Error de preparación: '.$conn->error);
-$stmt->bind_param('ssii', $titulo, $filename, $user_id, $id_tipo);
+$stmt->bind_param('ssii', $titulo, $filename, $docenteId, $id_tipo);
 
 if ($stmt->execute()) {
   $newId = $stmt->insert_id;
@@ -77,4 +122,9 @@ if ($stmt->execute()) {
   // Si falla, intenta eliminar el archivo subido para no dejar basura
   @unlink($destPath);
   jexit(false, 'Error al crear: '.$err);
+}
+} catch (Throwable $error) {
+  if (is_file($destPath)) @unlink($destPath);
+  error_log('Error al crear evidencia: ' . $error->getMessage());
+  jexit(false, 'No se pudo registrar la evidencia en la base de datos. Verifica la conexión y vuelve a intentar.');
 }

@@ -208,7 +208,7 @@ if ($id_tipo_ctx > 0) {
     btnSubmit.disabled = true;
     const fd = new FormData(form);
     fd.set('id_tipo_evidencia', <?= (int)$id_tipo_ctx ?>); // refuerza id_tipo
-    fetch('atributo-tipo-insert.php', { method:'POST', body:fd })
+    fetch('<?= BASE_URL ?>/controllers/admin/atributo-tipo-insert.php', { method:'POST', body:fd })
       .then(r=>r.json())
       .then(d=>{
         if (d && d.status === 'ok') {

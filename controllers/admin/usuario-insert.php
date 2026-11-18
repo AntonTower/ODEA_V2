@@ -12,16 +12,8 @@ if (!defined('BASE_DIR')) {
 // Carga segura de configuración y permisos
 require_once CONFIG_DIR . '/conexion.php';
 
-// Ajusta la ruta de permisos-instrumentos segun donde lo tengas ubicado (evaluador o admin)
-if (file_exists(CONTROLLERS_DIR . '/evaluador/permisos-instrumentos.php')) {
-    require_once CONTROLLERS_DIR . '/evaluador/permisos-instrumentos.php';
-} elseif (file_exists(CONTROLLERS_DIR . '/admin/permisos-instrumentos.php')) {
-    require_once CONTROLLERS_DIR . '/admin/permisos-instrumentos.php';
-}
-
-if (function_exists('exigirGestion')) {
-    exigirGestion($conn, 'gestion-usuarios.php');
-}
+require_once BASE_DIR . '/views/evaluador/permisos-instrumentos.php';
+exigirGestion($conn, 'gestion-usuarios.php');
 
 function jexit($ok, $msg = '', $extra = []) {
   echo json_encode(array_merge(['status' => $ok ? 'ok' : 'error', 'message' => $msg], $extra));

@@ -1,41 +1,46 @@
 <?php
-// evidencia-eliminar.php
 header('Content-Type: application/json; charset=utf-8');
-require_once 'conexion.php';
-require_once 'validacion.php';
 
-function jexit($ok, $msg = '', $extra = []) {
-  echo json_encode(array_merge(['status' => $ok ? 'ok' : 'error', 'message' => $msg], $extra));
-  exit;
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', realpath(__DIR__ . '/../..'));
+}
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/evidencias.php';
+
+function jexit($ok, $msg = '')
+{
+    echo json_encode(['status' => $ok ? 'ok' : 'error', 'message' => $msg]);
+    exit;
 }
 
-$user_id = (int)($_SESSION['ID'] ?? 0);
-$user_role = (int)($_SESSION['ROL'] ?? 0);
+$usuario = evidenciaUsuarioActual($conn);
+$userId = (int)$usuario['id_usuario'];
+$id = (int)($_POST['id_evidencia'] ?? 0);
+if ($userId <= 0) jexit(false, 'La sesión ya no es válida. Inicia sesión nuevamente.');
+if ($id <= 0) jexit(false, 'ID de evidencia inválido.');
 
+$stmt = $conn->prepare('SELECT id_docente FROM evidencias WHERE id_evidencia = ? AND ocultar = 0');
+$stmt->bind_param('i', $id);
+$stmt->execute();
+$evidencia = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+if (!$evidencia) jexit(false, 'Evidencia no encontrada.');
+if (!evidenciaPuedeEditar($usuario, $evidencia)) jexit(false, 'No tienes permiso para ocultar esta evidencia.');
 
-$id = isset($_POST['id_evidencia']) ? (int)$_POST['id_evidencia'] : 0;
-if ($id <= 0) jexit(false, 'ID inválido.');
-
-// Admin puede ocultar cualquiera; docente solo las suyas
-if ($user_role == 1) {
-  $sql = "UPDATE evidencias SET ocultar = 1 WHERE id_evidencia = ? AND ocultar = 0";
-  $stmt = $conn->prepare($sql);
-  if (!$stmt) jexit(false, 'Error de preparación: '.$conn->error);
-  $stmt->bind_param('i', $id);
-} elseif ($user_role == 4) {
-  $sql = "UPDATE evidencias SET ocultar = 1 WHERE id_evidencia = ? AND id_docente = ? AND ocultar = 0";
-  $stmt = $conn->prepare($sql);
-  if (!$stmt) jexit(false, 'Error de preparación: '.$conn->error);
-  $stmt->bind_param('ii', $id, $user_id);
+$sql = 'UPDATE evidencias SET ocultar = 1 WHERE id_evidencia = ? AND ocultar = 0';
+if ((int)$usuario['rol'] === 4) $sql .= ' AND id_docente = ?';
+$stmt = $conn->prepare($sql);
+if ((int)$usuario['rol'] === 4) {
+    $stmt->bind_param('ii', $id, $userId);
 } else {
-  jexit(false, 'No tienes permisos para ocultar evidencias.');
+    $stmt->bind_param('i', $id);
 }
 
-if ($stmt->execute()) {
-  $stmt->close();
-  jexit(true, 'Evidencia ocultada.');
-} else {
-  $err = $stmt->error ?: $conn->error;
-  $stmt->close();
-  jexit(false, 'No se pudo ocultar: '.$err);
+if (!$stmt->execute() || $stmt->affected_rows !== 1) {
+    $stmt->close();
+    jexit(false, 'No se pudo ocultar la evidencia.');
 }
+$stmt->close();
+jexit(true, 'Evidencia ocultada.');

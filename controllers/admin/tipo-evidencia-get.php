@@ -1,7 +1,13 @@
 <?php
 // tipo-evidencia-get.php
 header('Content-Type: application/json; charset=utf-8');
-require_once 'conexion.php';
+if (!defined('BASE_DIR')) {
+  define('BASE_DIR', realpath(__DIR__ . '/../..'));
+}
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once BASE_DIR . '/views/evaluador/permisos-instrumentos.php';
+exigirGestion($conn, 'tipos-evidencia.php');
 
 function jexit($ok, $msg = '', $extra = []) {
   echo json_encode(array_merge(['status' => $ok ? 'ok' : 'error', 'message' => $msg], $extra));

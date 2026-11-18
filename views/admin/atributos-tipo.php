@@ -8,8 +8,9 @@
  * - Carga tabla por AJAX desde vista-atributos-tipo.php?id_tipo=...
  */
 
-include 'validacion.php';
-include CONFIG_DIR . '/conexion.php';
+require_once __DIR__ . '/../../config/paths.php';
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
 /**
  * Forzar que en el menú lateral quede marcada como "activa"
  * la página de Tipos de Evidencia (tipos-evidencia.php),
@@ -19,17 +20,16 @@ include CONFIG_DIR . '/conexion.php';
  */
 $LEFT_ACTIVE_OVERRIDE = 'tipos-evidencia.php';
 
-include COMPONENTS_DIR . '/layout/header.php';
-include 'left-menu.php';
 // ===== Control de acceso (solo roles 1 o 2) =====
 $user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
 if (!in_array($user_role, [1, 2], true)) {
   // Redirige a Tipos de evidencia si no tiene permiso directo
-  header('Location: tipos-evidencia.php');
+  header('Location: ' . BASE_URL . '/views/admin/tipos-evidencia.php');
   exit();
 }
 
 $id_tipo = isset($_GET['id_tipo']) ? (int)$_GET['id_tipo'] : 0;
+$abrirAltaAtributo = ($_GET['agregar'] ?? '') === '1';
 if ($id_tipo <= 0) {
   die('<div class="card"><div class="card-content"><p>Falta el parámetro <strong>id_tipo</strong>.</p></div></div>');
 }
@@ -47,6 +47,8 @@ if ($res && $res->num_rows > 0) {
 }
 $stmt->close();
 
+include COMPONENTS_DIR . '/layout/header.php';
+include COMPONENTS_DIR . '/layout/left-menu.php';
 
 ?>
 
@@ -59,6 +61,9 @@ $stmt->close();
       <p class="text-muted-foreground" style="max-width:900px;">
         <?= htmlspecialchars($tipo['descripcion'] ?: 'Define los campos (atributos) que describen este tipo de evidencia.') ?>
       </p>
+      <?php if ($abrirAltaAtributo): ?>
+        <p class="text-muted-foreground" role="status">Tipo creado. Agrega ahora su primer atributo.</p>
+      <?php endif; ?>
     </div>
 
     <div style="display:flex; gap:8px;">
@@ -123,8 +128,8 @@ $stmt->close();
 
 <?php
 // Incluir modales de alta/edición
-if (file_exists('modal-agregar-atributo-tipo.php')) include 'modal-agregar-atributo-tipo.php';
-if (file_exists('modal-editar-atributo-tipo.php')) include 'modal-editar-atributo-tipo.php';
+include COMPONENTS_DIR . '/modals/modal-agregar-atributo-tipo.php';
+include COMPONENTS_DIR . '/modals/modal-editar-atributo-tipo.php';
 ?>
 
 <script>
@@ -135,6 +140,7 @@ window.lockPageScroll = function(lock){
 };
 
 const ID_TIPO = <?= (int)$id_tipo ?>;
+const ABRIR_ALTA_ATRIBUTO = <?= $abrirAltaAtributo ? 'true' : 'false' ?>;
 
 /* ========= DataTable / Carga ========= */
 const SEARCH_KEY = 'atributosTipoSearch_' + ID_TIPO;
@@ -142,8 +148,17 @@ let dtAT = null;
 
 loadTableAT();
 
+if (ABRIR_ALTA_ATRIBUTO) {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('agregar');
+  window.history.replaceState({}, '', url);
+  window.setTimeout(() => {
+    if (typeof window.openAddATModal === 'function') window.openAddATModal();
+  }, 0);
+}
+
 function loadTableAT(){
-  const url = 'vista-atributos-tipo.php?id_tipo=' + encodeURIComponent(ID_TIPO) + '&r=' + Date.now();
+  const url = '<?= BASE_URL ?>/views/admin/vista-atributos-tipo.php?id_tipo=' + encodeURIComponent(ID_TIPO) + '&r=' + Date.now();
   const xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function(){
     if (xhr.readyState === 4) {
@@ -244,7 +259,7 @@ window.closeEliminarAT = function(){
 };
 window.confirmEliminarAT = function(){
   if (!__deleteAtributoId) return;
-  fetch('atributo-tipo-eliminar.php', {
+  fetch('<?= BASE_URL ?>/controllers/admin/atributo-tipo-eliminar.php', {
     method: 'POST',
     headers: { 'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8' },
     body: new URLSearchParams({ id_ate: __deleteAtributoId })
@@ -273,4 +288,4 @@ window.confirmEliminarAT = function(){
 })();
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include COMPONENTS_DIR . '/layout/footer.php'; ?>

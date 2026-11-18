@@ -1,10 +1,13 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-include 'validacion.php';
-include CONFIG_DIR . '/conexion.php';
+if (!defined('BASE_DIR')) define('BASE_DIR', realpath(__DIR__ . '/../..'));
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/evidencias.php';
 
-$user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
+$usuarioActual = evidenciaUsuarioActual($conn);
+$user_id = (int)$usuarioActual['id_usuario'];
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id <= 0) { echo json_encode(['status'=>'error','message'=>'Parámetro faltante']); exit; }
@@ -14,7 +17,7 @@ $sql = "SELECT e.id_evidencia, e.id_docente, e.id_tipo_evidencia,
                t.nombre_tipo
         FROM evidencias e
         LEFT JOIN tipos_de_evidencia t ON t.id_tipo_evidencia = e.id_tipo_evidencia
-        WHERE e.id_evidencia = ?";
+        WHERE e.id_evidencia = ? AND e.ocultar = 0";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param('i', $id);
 $stmt->execute();
@@ -24,8 +27,7 @@ $stmt->close();
 
 if (!$evi) { echo json_encode(['status'=>'error','message'=>'Evidencia no encontrada']); exit; }
 
-// Only role 4 if owner; others can read (1,2,3)
-if ($user_role === 4 && (int)$evi['id_docente'] !== $user_id) {
+if (!evidenciaPuedeVer($conn, $usuarioActual, $evi)) {
   echo json_encode(['status'=>'error','message'=>'No autorizado']); exit;
 }
 

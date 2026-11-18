@@ -14,6 +14,8 @@ if (!defined('BASE_DIR')) {
 require_once __DIR__ . '/../../config/paths.php';
 
 require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/validacion-permiso.php';
 
 $sql = "SELECT
           te.id_tipo_evidencia,
@@ -59,7 +61,7 @@ $result = $conn->query($sql);
 
           $safeTipo = htmlspecialchars($tipo);
           $safeDesc = htmlspecialchars($desc);
-          $safeNameAttr = htmlspecialchars($tipo, ENT_QUOTES);
+          $safeNameAttr = htmlspecialchars($tipo, ENT_QUOTES, 'UTF-8');
 
           // Construir etiquetas desde la lista de abreviaturas
           $abrevs = $abrlRaw ? array_filter(array_map('trim', explode(',', $abrlRaw))) : [];
@@ -73,8 +75,7 @@ $result = $conn->query($sql);
 
           // Botón Lista (enlistar características del tipo)
           $btnLista = '
-            <button class="btn" type="button" title="Enlistar características"
-                    onclick="openAtributosTipo('.$id.')">
+            <button class="btn" type="button" title="Enlistar características" data-te-action="attributes" data-id="'.$id.'">
               <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
                 <path d="M6 6h13M6 12h13M6 18h13" stroke="#10b981" stroke-width="1.8" stroke-linecap="round"/>
                 <circle cx="3" cy="6" r="1.5" fill="#10b981"/>
@@ -85,8 +86,7 @@ $result = $conn->query($sql);
 
           // Editar
           $btnEdit = '
-            <button class="btn" type="button" title="Editar"
-                    onclick="openEditarTipo('.$id.')">
+            <button class="btn" type="button" title="Editar" data-te-action="edit" data-id="'.$id.'">
               <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
                 <path d="M3 17.25V21h3.75L19.81 7.94l-3.75-3.75L3 17.25z" stroke="#3b82f6" stroke-width="1.8" fill="none"/>
                 <path d="M14.06 4.19l3.75 3.75" stroke="#3b82f6" stroke-width="1.8"/>
@@ -95,8 +95,7 @@ $result = $conn->query($sql);
 
           // Eliminar
           $btnDelete = '
-            <button class="btn" type="button" title="Eliminar"
-                    onclick="openEliminarTE('.$id.', \''.$safeNameAttr.'\')">
+            <button class="btn" type="button" title="Eliminar" data-te-action="delete" data-id="'.$id.'" data-name="'.$safeNameAttr.'">
               <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
                 <path d="M3 6h18M8 6l1-2h6l1 2M6 6l1 14h10l1-14" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/>
                 <path d="M10 11v6M14 11v6" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/>

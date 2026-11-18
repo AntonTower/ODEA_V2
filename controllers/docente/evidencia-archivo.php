@@ -1,8 +1,10 @@
 <?php
 // Visor local y entrega del archivo. Nunca recibe rutas del cliente.
-require_once 'conexion.php';
-require_once 'permisos-instrumentos.php';
-$usuario = usuarioActualInstrumentos($conn);
+if (!defined('BASE_DIR')) define('BASE_DIR', realpath(__DIR__ . '/../..'));
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/evidencias.php';
+$usuario = evidenciaUsuarioActual($conn);
 $id = (int)($_GET['id'] ?? 0);
 $rol = (int)$usuario['rol'];
 header('Cache-Control: private, no-store');
@@ -16,22 +18,14 @@ function archivoError(int $estado, string $mensaje): void {
 }
 if (!$usuario['id_usuario']) archivoError(401, 'Inicia sesión para consultar el documento.');
 if ($id <= 0) archivoError(400, 'Evidencia inválida.');
-$alcance = alcanceInstrumentos($usuario);
-$st = $conn->prepare("SELECT e.archivo, e.titulo, e.id_docente,
-    EXISTS (SELECT 1 FROM instrumento_tipo_evidencia ite
-        JOIN instrumentos i ON i.id_instrumento=ite.id_instrumento AND i.activo=1
-        WHERE ite.id_tipo_evidencia=e.id_tipo_evidencia AND ($alcance)) AS asignada
-    FROM evidencias e WHERE e.id_evidencia=? AND e.ocultar=0");
+$st = $conn->prepare('SELECT e.archivo, e.titulo, e.id_docente, e.id_tipo_evidencia FROM evidencias e WHERE e.id_evidencia = ? AND e.ocultar = 0');
 $st->bind_param('i', $id);
 $st->execute();
 $evidencia = $st->get_result()->fetch_assoc();
 if (!$evidencia) archivoError(404, 'La evidencia no está disponible.');
-$permitido = in_array($rol, [1,2], true)
-    || ($rol === 3 && (int)$evidencia['asignada'] === 1)
-    || ($rol === 4 && (int)$evidencia['id_docente'] === (int)$usuario['id_usuario']);
-if (!$permitido) archivoError(403, 'No tienes acceso al documento de esta evidencia.');
+if (!evidenciaPuedeVer($conn, $usuario, $evidencia)) archivoError(403, 'No tienes acceso al documento de esta evidencia.');
 $nombreArchivo = (string)$evidencia['archivo'];
-$raiz = realpath(__DIR__.'/uploads/files');
+$raiz = realpath(BASE_DIR . '/uploads/files');
 $ruta = $raiz ? realpath($raiz.DIRECTORY_SEPARATOR.$nombreArchivo) : false;
 if (!$nombreArchivo || !$ruta || !is_file($ruta) || !is_readable($ruta)
     || strncmp($ruta, $raiz.DIRECTORY_SEPARATOR, strlen($raiz)+1) !== 0) {
@@ -52,7 +46,7 @@ if ($descarga || isset($_GET['contenido'])) {
 }
 session_write_close();
 header('Content-Type: text/html; charset=utf-8');
-$url = 'evidencia-archivo.php?id='.$id;
+$url = BASE_URL . '/controllers/docente/evidencia-archivo.php?id='.$id;
 ?>
 <!doctype html>
 <html lang="es">

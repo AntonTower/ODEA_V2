@@ -121,9 +121,13 @@ if ($rs = $conn->query($qIns)) {
       .then(r=>r.json())
       .then(data=>{
         if (data && data.status === 'ok') {
-          if (typeof window.closeAddTipoModal === 'function') window.closeAddTipoModal();
-          if (typeof loadTableTE === 'function') loadTableTE();
-          if (window.Swal) Swal.fire({icon:'success', title:'Creado', text:'El tipo fue creado correctamente.'});
+          const idTipo = Number(data.id);
+          if (idTipo > 0) {
+            window.location.href = '<?= BASE_URL ?>/views/admin/atributos-tipo.php?id_tipo='
+              + encodeURIComponent(idTipo) + '&agregar=1';
+          } else {
+            if (window.Swal) Swal.fire({icon:'warning', title:'Creado', text:'El tipo se creó, pero no se recibió su identificador para continuar con los atributos.'});
+          }
         } else {
           const msg = (data && data.message) ? data.message : 'No se pudo crear el tipo.';
           if (window.Swal) Swal.fire({icon:'warning', title:'Aviso', text: msg});

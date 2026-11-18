@@ -1,9 +1,11 @@
 <?php
 // evaluacion-save.php
 header('Content-Type: application/json; charset=utf-8');
-include 'validacion.php';
-include CONFIG_DIR . '/conexion.php';
-require_once 'permisos-instrumentos.php';
+if (!defined('BASE_DIR')) define('BASE_DIR', realpath(__DIR__ . '/../..'));
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once BASE_DIR . '/views/evaluador/permisos-instrumentos.php';
 $usuarioActual = usuarioActualInstrumentos($conn);
 $alcance = alcanceInstrumentos($usuarioActual);
 
@@ -42,7 +44,7 @@ $qE = "SELECT e.id_evidencia, e.id_docente, e.id_tipo_evidencia,
          FROM evidencia_valores_atributo
          GROUP BY id_evidencia
        ) vv ON vv.id_evidencia = e.id_evidencia
-       WHERE e.id_evidencia = ?";
+       WHERE e.id_evidencia = ? AND e.ocultar = 0";
 $sE = $conn->prepare($qE);
 $sE->bind_param('i', $id_evidencia);
 $sE->execute();

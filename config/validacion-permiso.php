@@ -1,33 +1,44 @@
 <?php
-// validacion-permiso.php
-// Uso: incluir al inicio de cada página principal DESPUÉS de tener la sesión iniciada.
-// Requiere: $_SESSION['ROL'] y conexión $conn (include 'conexion.php').
-require_once __DIR__ . '/paths.php';
+// Validar que el rol en sesión tenga permiso de acceder a la página actual
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-if (session_status() === PHP_SESSION_NONE) session_start();
-if (!isset($_SESSION['ROL'])) { header('Location: ' . BASE_URL . '/public/login.php'); exit(); }
+$user_role = $_SESSION['ROL'] ?? null;
+require_once CONFIG_DIR . '/menu_config.php';
 
-//require_once __DIR__.'/conexion.php';
-require_once CONFIG_DIR . '/conexion.php';
-// Bypass para Super Usuario
-if ((int)($_SESSION['ROL']) === 1) { return; }
+// El superusuario (1) siempre tiene acceso a todo.
+if ($user_role == 1) {
+    return;
+}
 
-// Nombre del archivo actual (sin querystring)
-$archivo = strtolower(basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)));
-$rol     = (int)$_SESSION['ROL'];
+$currentFile = strtolower(basename($_SERVER['PHP_SELF']));
+$acceso_permitido = false;
 
-// Chequea si el rol tiene acceso a esta página y que no esté oculta
-$sql = "SELECT 1
-        FROM menu_pagina mp
-        INNER JOIN menu_rol mr ON mr.id_pagina = mp.id_mp
-        WHERE LOWER(SUBSTRING_INDEX(mp.archivo, '/', -1)) = ?
-          AND COALESCE(mp.ocultar,0) = 0
-          AND COALESCE(mr.ocultar,0) = 0
-          AND mr.id_rol = ?
-        LIMIT 1";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param('si', $archivo, $rol);
-$stmt->execute();
-$allowed = $stmt->get_result()->num_rows > 0;
+// Buscar si el archivo actual está en el menú y validar si el rol tiene permiso
+foreach ($MENU_CONFIG as $item) {
+    if (strtolower(basename($item['ruta'])) === $currentFile) {
+        if (in_array($user_role, $item['roles'])) {
+            $acceso_permitido = true;
+        }
+        break;
+    }
+}
 
-if (!$allowed) { header('Location: ' . BASE_URL . '/views/comunes/index.php'); exit(); }
+// Si la vista solicitada no está en el menú principal, puedes definir permisos extendidos aquí.
+// (Por ejemplo: modales, detalle de evidencia, que comparten permisos con la vista padre)
+$rutas_extendidas = [
+    'evidencia-detalle.php' => [1, 2, 3, 4],
+    'vista-gestion-usuarios.php' => [1, 2],
+    'vista-tipos-evidencia.php' => [1, 2],
+    // Añade aquí más sub-archivos según necesites
+];
+
+if (isset($rutas_extendidas[$currentFile]) && in_array($user_role, $rutas_extendidas[$currentFile])) {
+    $acceso_permitido = true;
+}
+
+if (!$acceso_permitido) {
+    // Redirigir si no tiene permisos
+    header("Location: " . BASE_URL . "/views/comunes/index.php");
+    exit();
+}
+?>

@@ -30,6 +30,10 @@ $alcance = function_exists('alcanceInstrumentos') ? alcanceInstrumentos($usuario
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
 $user_role = (int)($usuarioActual['rol'] ?? 0);
+if ((int)($usuarioActual['id_usuario'] ?? 0) <= 0 || !in_array($user_role, [1, 2, 3], true)) {
+  http_response_code($user_id > 0 ? 403 : 401);
+  exit('<div class="card-content"><p>No tienes permiso para consultar la evaluación de evidencias.</p></div>');
+}
 
 $estado = isset($_GET['estado']) ? trim($_GET['estado']) : 'todas'; // pendiente|completa|todas
 $inst   = isset($_GET['instrumento']) ? (int)$_GET['instrumento'] : 0;

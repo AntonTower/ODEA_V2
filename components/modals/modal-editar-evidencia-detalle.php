@@ -193,8 +193,7 @@
         const aTag = document.createElement('a');
         aTag.className = 'btn';
         aTag.style.marginLeft = '6px';
-        aTag.href = 'uploads/files/'+encodeURIComponent(v.valor_archivo);
-        aTag.setAttribute('download', v.valor_archivo);
+        aTag.href = '<?= BASE_URL ?>/controllers/docente/evidencia-archivo.php?id=' + encodeURIComponent(document.getElementById('ea_id_evidencia').value) + '&descargar=1';
         aTag.textContent = 'Descargar actual';
         row.appendChild(aTag);
       }
@@ -234,7 +233,7 @@
   window.openEditAtributosModal = function(evidId){
     document.getElementById('ea_id_evidencia').value = evidId;
     fields.innerHTML = '';
-    fetch('evidencia-detalle-get.php?id='+encodeURIComponent(evidId))
+    fetch('<?= BASE_URL ?>/controllers/docente/evidencia-detalle-get.php?id='+encodeURIComponent(evidId))
       .then(r=>r.json())
       .then(data=>{
         if (!data || data.status !== 'ok') throw new Error(data?.message || 'No se pudo cargar.');
@@ -257,7 +256,7 @@
     btnSave.disabled = true;
 
     const fd = new FormData(form);
-    fetch('evidencia-detalle-save.php', { method:'POST', body: fd })
+    fetch('<?= BASE_URL ?>/controllers/docente/evidencia-detalle-save.php', { method:'POST', body: fd })
       .then(r=>r.json())
       .then(j=>{
         if (j && j.status === 'ok') {

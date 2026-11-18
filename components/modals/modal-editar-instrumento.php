@@ -106,7 +106,7 @@ function toggleRango(show){
   window.openEditarInstrumentoModal = function(id){
     document.getElementById('formEditInst').reset();
     toggleRango(false);
-    fetch('instrumento-get.php?id='+encodeURIComponent(id))
+    fetch('<?= BASE_URL ?>/controllers/admin/instrumento-get.php?id='+encodeURIComponent(id))
       .then(r=>r.json())
       .then(data=>{
         if (data && data.status === 'ok' && data.instrumento) {
@@ -170,7 +170,7 @@ function toggleRango(show){
     const fd = new FormData(form);
     // Si tipo es APROBACION, aunque viaje min/max, backend los ignora.
 
-    fetch('instrumento-update.php', { method:'POST', body:fd })
+    fetch('<?= BASE_URL ?>/controllers/admin/instrumento-update.php', { method:'POST', body:fd })
       .then(r=>r.json())
       .then(data=>{
         if (data && data.status === 'ok') {

@@ -15,7 +15,7 @@
   // $currentUser = ['name'=>'Invitado','email'=>''];
 
   include COMPONENTS_DIR . '/layout/header.php';
-  include 'left-menu.php';
+  include COMPONENTS_DIR . '/layout/left-menu.php';
 ?>
 
 <!--

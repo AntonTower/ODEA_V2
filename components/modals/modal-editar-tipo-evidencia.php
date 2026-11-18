@@ -101,7 +101,7 @@ if ($rs = $conn->query($qIns)) {
     document.getElementById('formEditTipo').reset();
     document.querySelectorAll('#inst_list_edit input[type="checkbox"]').forEach(cb => cb.checked = false);
 
-    fetch('tipo-evidencia-get.php?id='+encodeURIComponent(id))
+    fetch('<?= BASE_URL ?>/controllers/admin/tipo-evidencia-get.php?id='+encodeURIComponent(id))
       .then(r=>r.json())
       .then(data=>{
         if (data && data.status === 'ok' && data.tipo) {
@@ -148,7 +148,7 @@ if ($rs = $conn->query($qIns)) {
     btnSubmit.disabled = true;
     const fd = new FormData(form);
 
-    fetch('tipo-evidencia-update.php', { method:'POST', body:fd })
+    fetch('<?= BASE_URL ?>/controllers/admin/tipo-evidencia-update.php', { method:'POST', body:fd })
       .then(r=>r.json())
       .then(data=>{
         if (data && data.status === 'ok') {

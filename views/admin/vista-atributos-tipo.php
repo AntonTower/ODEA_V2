@@ -3,7 +3,13 @@
  * Vista de la tabla de Atributos por Tipo (DataTables + Responsive)
  * Recibe: ?id_tipo=...
  */
-include CONFIG_DIR . '/conexion.php';
+if (!defined('BASE_DIR')) {
+  define('BASE_DIR', realpath(__DIR__ . '/../..'));
+}
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once BASE_DIR . '/views/evaluador/permisos-instrumentos.php';
+exigirGestion($conn, 'tipos-evidencia.php');
 
 $id_tipo = isset($_GET['id_tipo']) ? (int)$_GET['id_tipo'] : 0;
 if ($id_tipo <= 0) {

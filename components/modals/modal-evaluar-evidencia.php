@@ -95,7 +95,7 @@
     const carga = cargaActual;
     const wrap = document.getElementById('evalAtributos');
     wrap.innerHTML = '<p class="text-muted">Cargando atributos…</p>';
-    fetch('evidencia-atributos-get.php?id=' + encodeURIComponent(eviId))
+    fetch('<?= BASE_URL ?>/controllers/docente/evidencia-atributos-get.php?id=' + encodeURIComponent(eviId))
       .then(r=>r.json())
       .then(j=>{
         if (carga !== cargaActual) return;
@@ -141,7 +141,7 @@
     const carga = cargaActual;
     const wrap = document.getElementById('evalInstruments');
     wrap.innerHTML = '<p class="text-muted">Cargando instrumentos…</p>';
-    fetch('evaluacion-get.php?id=' + encodeURIComponent(eviId))
+    fetch('<?= BASE_URL ?>/controllers/evaluador/evaluacion-get.php?id=' + encodeURIComponent(eviId))
       .then(r=>r.json())
       .then(j=>{
         if (carga !== cargaActual) return;
@@ -215,7 +215,7 @@
     fd.append('resultado',     valor);
     fd.append('comentario',    comentario);
 
-    fetch('evaluacion-save.php', {method:'POST', body:fd})
+    fetch('<?= BASE_URL ?>/controllers/evaluador/evaluacion-save.php', {method:'POST', body:fd})
       .then(r=>r.json())
       .then(j=>{
         if (j && j.status === 'ok') {
@@ -232,7 +232,7 @@
   /* ========= Abrir modal público ========= */
   window.evalOpenModal = function(eviId){
     cargaActual++;
-    document.getElementById('evalDocumento').src = 'evidencia-archivo.php?id=' + encodeURIComponent(eviId);
+    document.getElementById('evalDocumento').src = '<?= BASE_URL ?>/controllers/docente/evidencia-archivo.php?id=' + encodeURIComponent(eviId);
     document.getElementById('dlgEvalTitle').textContent = 'Evaluar evidencia #' + eviId;
     open();
     loadAtributos(eviId);

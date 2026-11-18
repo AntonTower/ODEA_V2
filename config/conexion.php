@@ -3,7 +3,7 @@ $servername = "127.0.0.1";
 $database = getenv("GESTOR_DB_NAME") ?: "gestor_evidencia_produccion";
 $username = "root";
 $password = "";
-$port = 3306;
+$port = 3308; // <-- Puerto actualizado para que coincida con XAMPP
 
 // Crear conexión
 $conn = mysqli_connect(

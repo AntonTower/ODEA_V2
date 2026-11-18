@@ -1,16 +1,21 @@
 <?php
 // evidencia-get.php
 header('Content-Type: application/json; charset=utf-8');
-require_once 'conexion.php';
-require_once 'validacion.php';
+if (!defined('BASE_DIR')) {
+  define('BASE_DIR', realpath(__DIR__ . '/../..'));
+}
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/evidencias.php';
 
 function jexit($ok, $msg = '', $extra = []) {
   echo json_encode(array_merge(['status' => $ok ? 'ok' : 'error', 'message' => $msg], $extra));
   exit;
 }
 
-$user_id = (int)($_SESSION['ID'] ?? 0);
-$user_role = (int)($_SESSION['ROL'] ?? 0);
+$usuarioActual = evidenciaUsuarioActual($conn);
+if ((int)$usuarioActual['id_usuario'] <= 0) jexit(false, 'La sesión ya no es válida. Inicia sesión nuevamente.');
 
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -28,10 +33,6 @@ $e = $res->fetch_assoc();
 $stmt->close();
 
 if (!$e) jexit(false, 'Evidencia no encontrada.');
-
-// Permite que solo el docente dueño la edite (o admin si luego lo habilitas)
-if ($user_role == 4 && (int)$e['id_docente'] !== (int)$user_id) {
-  jexit(false, 'No puedes editar esta evidencia.');
-}
+if (!evidenciaPuedeEditar($usuarioActual, $e)) jexit(false, 'No tienes permiso para editar esta evidencia.');
 
 jexit(true, '', ['evidencia' => $e]);

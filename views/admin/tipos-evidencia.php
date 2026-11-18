@@ -180,14 +180,14 @@ function initDTTE(){
     const saved = dtTE.state()?.search?.search || localStorage.getItem(SEARCH_KEY) || '';
     $search.val(saved);
     if (saved) dtTE.search(saved).draw();
-    $search.on('input', function(){
+    $search.off('input.te').on('input.te', function(){
       const val = this.value;
       dtTE.search(val).draw();
       localStorage.setItem(SEARCH_KEY, val);
     });
   }
   if ($clear.length) {
-    $clear.on('click', function(){
+    $clear.off('click.te').on('click.te', function(){
       if ($search.length) {
         $search.val('');
         localStorage.setItem(SEARCH_KEY, '');
@@ -195,6 +195,15 @@ function initDTTE(){
       dtTE.search('').draw();
     });
   }
+
+  $table.off('click.teActions', 'button[data-te-action]').on('click.teActions', 'button[data-te-action]', function(){
+    const id = this.dataset.id;
+    switch (this.dataset.teAction) {
+      case 'attributes': window.openAtributosTipo(id); break;
+      case 'edit': window.openEditarTipo(id); break;
+      case 'delete': window.openEliminarTE(id, this.dataset.name || ''); break;
+    }
+  });
 
   // === Filtros por instrumento (NUEVO) ===
   restoreInstrumentFilters();    // setea checkboxes según localStorage

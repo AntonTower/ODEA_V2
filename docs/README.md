@@ -22,7 +22,7 @@ El sistema está organizado en una arquitectura modular orientada a la separaci�
 *   **`/docs`**: Documentación técnica del proyecto, manuales de contexto, dependencias y bitácora de cambios (CHANGELOG).
 *   **`/fpdf`**: Librería de terceros para la generación dinámica de comprobantes de calificación en formato PDF.
 *   **`/public`**: Puntos de acceso públicos que no requieren sesión activa o gestionan el inicio de la misma (login, registro, scripts de acceso).
-*   **`/sql`**: Scripts y respaldos de la base de datos, incluyendo la estructura para el entorno de producción (`gestor_evidencia_produccion.sql`) y datos de prueba.
+*   **`/sql`**: Volcado vigente de la base de datos (`gestor_evidencia_produccion_v2.sql`) y datos de demostración.
 *   **`/styles`**: Hojas de estilos en cascada (CSS) para la personalización de la interfaz.
 *   **`/tests`**: Entornos de prueba para el desarrollo de nuevas características.
 *   **`/views`**: Interfaces gráficas donde interactúa el usuario final, segmentadas por su nivel de acceso al sistema:
@@ -42,6 +42,6 @@ El acceso a las vistas y controladores está regulado por cuatro perfiles princi
 ## Despliegue Local
 
 1.  Clona el repositorio o ubica la carpeta `gestor_evidencias` dentro de tu entorno de servidor local (ej. `C:\xampp\htdocs\`).
-2.  Crea una nueva base de datos en tu gestor MySQL/MariaDB e importa el esquema principal ubicado en `sql/gestor_evidencia_produccion.sql`.
+2.  Crea una base de datos vacía en MySQL/MariaDB e importa `sql/gestor_evidencia_produccion_v2.sql` desde phpMyAdmin.
 3.  Ajusta las credenciales de acceso a la base de datos en el archivo `config/conexion.php`.
 4.  Accede a la plataforma web iniciando en la ruta `public/login.php`.

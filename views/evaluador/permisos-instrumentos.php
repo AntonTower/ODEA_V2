@@ -14,10 +14,14 @@ function exigirGestion(mysqli $conn, string $pagina): void {
     $rol = (int)$u['rol'];
     $permitido = $rol === 1;
     if (!$permitido && $rol === 2) {
-        $st = $conn->prepare('SELECT 1 FROM menu_pagina p JOIN menu_rol r ON r.id_pagina=p.id_mp WHERE p.archivo=? AND r.id_rol=? AND COALESCE(p.ocultar,0)=0 AND COALESCE(r.ocultar,0)=0');
-        $st->bind_param('si', $pagina, $rol);
-        $st->execute();
-        $permitido = $st->get_result()->num_rows > 0;
+        require_once __DIR__ . '/../../config/menu_config.php';
+        foreach ($MENU_CONFIG as $item) {
+            if (strtolower(basename($item['ruta'])) === strtolower(basename($pagina))
+                && in_array($rol, $item['roles'], true)) {
+                $permitido = true;
+                break;
+            }
+        }
     }
     if (!$permitido) {
         http_response_code(403);
@@ -36,6 +40,13 @@ function alcanceInstrumentos(array $usuario, string $alias = 'i'): string {
 }
 
 function guardarInstrumentosEvaluador(mysqli $conn, int $id, int $rol, $instrumentos): void {
+    $st = $conn->prepare('DELETE FROM evaluador_instrumento WHERE id_evaluador=?');
+    $st->bind_param('i', $id);
+    $st->execute();
+    $st->close();
+
+    // Las asignaciones solo existen para cuentas con rol Evaluador (3).
+    if ($rol !== 3) return;
     if (!is_array($instrumentos)) throw new InvalidArgumentException('Instrumentos invalidos.');
     $ids = [];
     foreach ($instrumentos as $valor) {
@@ -44,13 +55,10 @@ function guardarInstrumentosEvaluador(mysqli $conn, int $id, int $rol, $instrume
         }
         $ids[(int)$valor] = (int)$valor;
     }
-    $st = $conn->prepare('DELETE FROM evaluador_instrumento WHERE id_evaluador=?');
-    $st->bind_param('i', $id);
-    $st->execute();
-    if ($rol !== 3) return;
     $st = $conn->prepare('INSERT INTO evaluador_instrumento (id_evaluador, id_instrumento) VALUES (?, ?)');
     foreach ($ids as $iid) {
         $st->bind_param('ii', $id, $iid);
         $st->execute(); // La FK rechaza IDs inexistentes; el llamador revierte toda la transaccion.
     }
+    $st->close();
 }

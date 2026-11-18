@@ -1,12 +1,12 @@
--- DEMOSTRACIÓN ADITIVA para sql/gestor_evidencia.sql (MariaDB 10.4 / MySQL).
--- Seleccionar la base existente en phpMyAdmin antes de importar este archivo.
--- No crea/reemplaza tablas ni borra o actualiza registros existentes. No usa IDs fijos.
+-- DEMOSTRACIÓN ADITIVA para gestor_evidencia_produccion_v2.sql (MariaDB 10.4 / MySQL).
+-- Seleccionar la base limpia creada e importada desde el SQL v2 antes de importar este archivo.
+-- No crea/reemplaza tablas ni borra o actualiza registros existentes; no usa IDs fijos.
 -- Reimportación secuencial: omite los registros demo ya existentes; conserva sus cambios.
--- Requisitos: catálogos y esquema del volcado original; instrumentos SNII, PRODEP y ESDEPED en APROBACION.
+-- Requiere esquema v2, atributos configurables e instrumentos SNII, PRODEP y ESDEPED.
 -- Ejecutar primero preparar_archivos_demo.ps1. SQL no copia archivos al servidor web.
 -- Todos los nombres, productos, identificadores, dictámenes y calificaciones son ficticios.
 -- Asociaciones ilustrativas para pruebas; no equivalen a una evaluación oficial.
--- 15 usuarios (10 docentes, 3 evaluadores, 1 administrador, 1 superusuario). Clave de todos: 1234 (bcrypt).
+-- 15 usuarios (10 docentes, 3 evaluadores, 1 administrador, 1 superusuario). Clave: 1234 (bcrypt).
 -- 15 tipos nuevos, 45 evidencias completas, 40 asociaciones y 120 calificaciones (105 aprobadas / 15 rechazadas).
 -- Archivos: solo el nombre en BD; ubicación física: uploads/files/.
 SET NAMES utf8mb4;
@@ -60,10 +60,17 @@ SET @demo_u14 = (SELECT id_usuario FROM usuarios WHERE correo = 'administrador@d
 INSERT INTO usuarios (nombre, apellidop, apellidom, correo, password, rol, activo, created_at, updated_at)
 SELECT 'Sergio', 'Valdés', 'Peña', 'superusuario@demo.example', '$2y$10$CH0YPfe1dUNjth8cOkTUkuZuZgYH54jxem6djx/Y7xdY5rFRW.Wwq', 1, 1, '2023-01-02 09:00:00', '2023-01-02 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE correo = 'superusuario@demo.example');
 SET @demo_u15 = (SELECT id_usuario FROM usuarios WHERE correo = 'superusuario@demo.example');
+-- Acceso de evaluación de demostración: cada cuenta recibe solo su instrumento.
+INSERT INTO evaluador_instrumento (id_evaluador, id_instrumento)
+SELECT @demo_u11, @demo_snii WHERE @demo_snii IS NOT NULL AND NOT EXISTS (SELECT 1 FROM evaluador_instrumento WHERE id_evaluador = @demo_u11 AND id_instrumento = @demo_snii);
+INSERT INTO evaluador_instrumento (id_evaluador, id_instrumento)
+SELECT @demo_u12, @demo_prodep WHERE @demo_prodep IS NOT NULL AND NOT EXISTS (SELECT 1 FROM evaluador_instrumento WHERE id_evaluador = @demo_u12 AND id_instrumento = @demo_prodep);
+INSERT INTO evaluador_instrumento (id_evaluador, id_instrumento)
+SELECT @demo_u13, @demo_esdeped WHERE @demo_esdeped IS NOT NULL AND NOT EXISTS (SELECT 1 FROM evaluador_instrumento WHERE id_evaluador = @demo_u13 AND id_instrumento = @demo_esdeped);
 
 -- TIPO 1: Artículo científico arbitrado e indexado
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Artículo científico arbitrado e indexado', 'DATOS FICTICIOS. Producción científica: artículo con arbitraje, datos editoriales e indexación simulados.', 1, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Artículo científico arbitrado e indexado');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Artículo científico arbitrado e indexado', 'DATOS FICTICIOS. Producción científica: artículo con arbitraje, datos editoriales e indexación simulados.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Artículo científico arbitrado e indexado');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Artículo científico arbitrado e indexado');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_snii, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_snii AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
@@ -190,8 +197,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 1, 'Evaluación ficticia de esdeped: aprobado. Datos completos y producto pertinente para Artículo científico arbitrado e indexado; se verificaron responsable, periodo y soporte de demostración.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 2: Capítulo de libro de investigación
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Capítulo de libro de investigación', 'DATOS FICTICIOS. Capítulo de autoría académica dentro de una obra colectiva con dictamen.', 1, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Capítulo de libro de investigación');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Capítulo de libro de investigación', 'DATOS FICTICIOS. Capítulo de autoría académica dentro de una obra colectiva con dictamen.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Capítulo de libro de investigación');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Capítulo de libro de investigación');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_snii, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_snii AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
@@ -306,8 +313,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 1, 'Evaluación ficticia de esdeped: aprobado. Datos completos y producto pertinente para Capítulo de libro de investigación; se verificaron responsable, periodo y soporte de demostración.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 3: Libro de investigación dictaminado
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Libro de investigación dictaminado', 'DATOS FICTICIOS. Obra original de investigación publicada con dictamen editorial.', 1, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Libro de investigación dictaminado');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Libro de investigación dictaminado', 'DATOS FICTICIOS. Obra original de investigación publicada con dictamen editorial.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Libro de investigación dictaminado');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Libro de investigación dictaminado');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_snii, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_snii AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
@@ -422,8 +429,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 0, 'Evaluación ficticia de esdeped: no aprobado. Captura completa; se simula un dictamen desfavorable por insuficiente pertinencia del producto para el rubro evaluado. Requiere revisión académica.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 4: Proyecto de investigación concluido
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Proyecto de investigación concluido', 'DATOS FICTICIOS. Proyecto institucional con informe final, financiamiento y productos identificados.', 1, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Proyecto de investigación concluido');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Proyecto de investigación concluido', 'DATOS FICTICIOS. Proyecto institucional con informe final, financiamiento y productos identificados.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Proyecto de investigación concluido');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Proyecto de investigación concluido');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_snii, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_snii AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
@@ -538,8 +545,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 1, 'Evaluación ficticia de esdeped: aprobado. Datos completos y producto pertinente para Proyecto de investigación concluido; se verificaron responsable, periodo y soporte de demostración.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 5: Dirección de tesis de licenciatura
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Dirección de tesis de licenciatura', 'DATOS FICTICIOS. Formación de recursos humanos mediante tesis defendida y acta de titulación.', 1, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Dirección de tesis de licenciatura');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Dirección de tesis de licenciatura', 'DATOS FICTICIOS. Formación de recursos humanos mediante tesis defendida y acta de titulación.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Dirección de tesis de licenciatura');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Dirección de tesis de licenciatura');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_snii, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_snii AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
@@ -654,8 +661,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 1, 'Evaluación ficticia de esdeped: aprobado. Datos completos y producto pertinente para Dirección de tesis de licenciatura; se verificaron responsable, periodo y soporte de demostración.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 6: Dirección de tesis de posgrado
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Dirección de tesis de posgrado', 'DATOS FICTICIOS. Formación de investigadores mediante tesis de maestría o doctorado concluida.', 1, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Dirección de tesis de posgrado');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Dirección de tesis de posgrado', 'DATOS FICTICIOS. Formación de investigadores mediante tesis de maestría o doctorado concluida.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Dirección de tesis de posgrado');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Dirección de tesis de posgrado');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_snii, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_snii AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
@@ -770,8 +777,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 0, 'Evaluación ficticia de esdeped: no aprobado. Captura completa; se simula un dictamen desfavorable por insuficiente pertinencia del producto para el rubro evaluado. Requiere revisión académica.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 7: Ponencia en congreso científico
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Ponencia en congreso científico', 'DATOS FICTICIOS. Comunicación de resultados de investigación en un congreso académico.', 1, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Ponencia en congreso científico');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Ponencia en congreso científico', 'DATOS FICTICIOS. Comunicación de resultados de investigación en un congreso académico.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Ponencia en congreso científico');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Ponencia en congreso científico');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_snii, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_snii AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
@@ -886,8 +893,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 1, 'Evaluación ficticia de esdeped: aprobado. Datos completos y producto pertinente para Ponencia en congreso científico; se verificaron responsable, periodo y soporte de demostración.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 8: Desarrollo de software con registro
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Desarrollo de software con registro', 'DATOS FICTICIOS. Producto de aplicación del conocimiento con registro y validación técnica simulados.', 1, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Desarrollo de software con registro');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Desarrollo de software con registro', 'DATOS FICTICIOS. Producto de aplicación del conocimiento con registro y validación técnica simulados.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Desarrollo de software con registro');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Desarrollo de software con registro');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_snii, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_snii AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
@@ -1002,8 +1009,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 1, 'Evaluación ficticia de esdeped: aprobado. Datos completos y producto pertinente para Desarrollo de software con registro; se verificaron responsable, periodo y soporte de demostración.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 9: Divulgación científica comunitaria
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Divulgación científica comunitaria', 'DATOS FICTICIOS. Actividad de acceso al conocimiento dirigida a públicos no especializados.', 1, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Divulgación científica comunitaria');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Divulgación científica comunitaria', 'DATOS FICTICIOS. Actividad de acceso al conocimiento dirigida a públicos no especializados.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Divulgación científica comunitaria');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Divulgación científica comunitaria');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_snii, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_snii AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
@@ -1118,8 +1125,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 0, 'Evaluación ficticia de esdeped: no aprobado. Captura completa; se simula un dictamen desfavorable por insuficiente pertinencia del producto para el rubro evaluado. Requiere revisión académica.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 10: Estancia de investigación académica
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Estancia de investigación académica', 'DATOS FICTICIOS. Colaboración temporal con una institución receptora y productos verificables.', 1, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Estancia de investigación académica');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Estancia de investigación académica', 'DATOS FICTICIOS. Colaboración temporal con una institución receptora y productos verificables.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Estancia de investigación académica');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Estancia de investigación académica');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_snii, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_snii AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
@@ -1234,8 +1241,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 1, 'Evaluación ficticia de esdeped: aprobado. Datos completos y producto pertinente para Estancia de investigación académica; se verificaron responsable, periodo y soporte de demostración.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 11: Asignatura de licenciatura impartida
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Asignatura de licenciatura impartida', 'DATOS FICTICIOS. Docencia frente a grupo con carga horaria, programa y acta de cierre.', 0, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Asignatura de licenciatura impartida');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Asignatura de licenciatura impartida', 'DATOS FICTICIOS. Docencia frente a grupo con carga horaria, programa y acta de cierre.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Asignatura de licenciatura impartida');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Asignatura de licenciatura impartida');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_esdeped, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_esdeped AND id_tipo_evidencia = @demo_tipo);
@@ -1352,8 +1359,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 1, 'Evaluación ficticia de esdeped: aprobado. Datos completos y producto pertinente para Asignatura de licenciatura impartida; se verificaron responsable, periodo y soporte de demostración.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 12: Tutoría académica individual
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Tutoría académica individual', 'DATOS FICTICIOS. Acompañamiento académico con plan de trabajo, sesiones y resultados.', 0, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Tutoría académica individual');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Tutoría académica individual', 'DATOS FICTICIOS. Acompañamiento académico con plan de trabajo, sesiones y resultados.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Tutoría académica individual');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Tutoría académica individual');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_esdeped, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_esdeped AND id_tipo_evidencia = @demo_tipo);
@@ -1464,8 +1471,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 0, 'Evaluación ficticia de esdeped: no aprobado. Captura completa; se simula un dictamen desfavorable por insuficiente pertinencia del producto para el rubro evaluado. Requiere revisión académica.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 13: Material didáctico original validado
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Material didáctico original validado', 'DATOS FICTICIOS. Recurso original de apoyo a la enseñanza con validación colegiada y uso documentado.', 0, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Material didáctico original validado');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Material didáctico original validado', 'DATOS FICTICIOS. Recurso original de apoyo a la enseñanza con validación colegiada y uso documentado.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Material didáctico original validado');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Material didáctico original validado');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_esdeped, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_esdeped AND id_tipo_evidencia = @demo_tipo);
@@ -1576,8 +1583,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 1, 'Evaluación ficticia de esdeped: aprobado. Datos completos y producto pertinente para Material didáctico original validado; se verificaron responsable, periodo y soporte de demostración.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 14: Gestión de cuerpo académico
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Gestión de cuerpo académico', 'DATOS FICTICIOS. Trabajo colegiado y gestión de un cuerpo académico con actas y productos.', 0, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Gestión de cuerpo académico');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Gestión de cuerpo académico', 'DATOS FICTICIOS. Trabajo colegiado y gestión de un cuerpo académico con actas y productos.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Gestión de cuerpo académico');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Gestión de cuerpo académico');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_esdeped, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_esdeped AND id_tipo_evidencia = @demo_tipo);
@@ -1688,8 +1695,8 @@ INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, com
 INSERT INTO calificacion_evidencia (id_evidencia, id_instrumento, resultado, comentario, id_usuario_eval, calificado_en, actualizado_en) SELECT @demo_evidencia, @demo_esdeped, 0, 'Evaluación ficticia de esdeped: no aprobado. Captura completa; se simula un dictamen desfavorable por insuficiente pertinencia del producto para el rubro evaluado. Requiere revisión académica.', @demo_u13, '2025-07-05 12:00:00', '2025-07-05 12:00:00' WHERE NOT EXISTS (SELECT 1 FROM calificacion_evidencia WHERE id_evidencia = @demo_evidencia AND id_instrumento = @demo_esdeped);
 
 -- TIPO 15: Curso de actualización docente acreditado
-INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion, SNI, PRODEP, ESDEPED)
-SELECT '[DEMO] Curso de actualización docente acreditado', 'DATOS FICTICIOS. Formación docente continua con duración, evaluación y constancia de acreditación.', 0, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Curso de actualización docente acreditado');
+INSERT INTO tipos_de_evidencia (nombre_tipo, descripcion)
+SELECT '[DEMO] Curso de actualización docente acreditado', 'DATOS FICTICIOS. Formación docente continua con duración, evaluación y constancia de acreditación.' WHERE NOT EXISTS (SELECT 1 FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Curso de actualización docente acreditado');
 SET @demo_tipo = (SELECT id_tipo_evidencia FROM tipos_de_evidencia WHERE nombre_tipo = '[DEMO] Curso de actualización docente acreditado');
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_prodep, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_prodep AND id_tipo_evidencia = @demo_tipo);
 INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia, asignado_en) SELECT @demo_esdeped, @demo_tipo, '2023-01-03 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM instrumento_tipo_evidencia WHERE id_instrumento = @demo_esdeped AND id_tipo_evidencia = @demo_tipo);

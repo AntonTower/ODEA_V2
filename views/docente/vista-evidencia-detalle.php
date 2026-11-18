@@ -7,11 +7,15 @@
  *     * rol 4 (dueño): invitar a completar
  *     * otros roles: indicar que no hay info completa
  */
-include CONFIG_DIR . '/conexion.php';
-include 'validacion.php';
+if (!defined('BASE_DIR')) define('BASE_DIR', realpath(__DIR__ . '/../..'));
+require_once BASE_DIR . '/config/paths.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/evidencias.php';
 
-$user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
+$usuarioActual = evidenciaUsuarioActual($conn);
+$user_id = (int)$usuarioActual['id_usuario'];
+$user_role = (int)$usuarioActual['rol'];
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id <= 0) {
@@ -23,7 +27,7 @@ $sqlE = "SELECT e.id_evidencia, e.id_docente, e.id_tipo_evidencia,
                 t.nombre_tipo
          FROM evidencias e
          LEFT JOIN tipos_de_evidencia t ON t.id_tipo_evidencia = e.id_tipo_evidencia
-         WHERE e.id_evidencia = ?";
+         WHERE e.id_evidencia = ? AND e.ocultar = 0";
 $stmt = $conn->prepare($sqlE);
 $stmt->bind_param('i', $id);
 $stmt->execute();
@@ -35,6 +39,12 @@ if (!$evi) {
   echo '<div class="card-content"><p>Evidencia no encontrada.</p></div>'; exit;
 }
 $isOwner = ((int)$evi['id_docente'] === $user_id);
+if (!evidenciaPuedeVer($conn, $usuarioActual, $evi)) {
+  http_response_code(403);
+  echo '<div class="card-content"><p>No tienes permiso para consultar esta evidencia.</p></div>';
+  exit;
+}
+$canEdit = evidenciaPuedeEditar($usuarioActual, $evi);
 
 // Trae atributos definidos para ese tipo
 $sqlA = "SELECT a.id_ate, a.nombre_atributo, a.slug, a.descripcion, a.orden,
@@ -77,7 +87,7 @@ foreach ($values as $list) { if (!empty($list)) { $hasAnyValue = true; break; } 
 ?>
 <div class="card-content">
   <?php if (!$hasAnyValue): ?>
-    <?php if ($user_role === 4 && $isOwner): ?>
+    <?php if ($canEdit): ?>
       <div class="alert" role="status" style="margin-bottom:12px;">
         Aún no has capturado la información detallada de esta evidencia. Usa <strong>“Editar atributos”</strong> para completarla.
       </div>
@@ -115,14 +125,14 @@ foreach ($values as $list) { if (!empty($list)) { $hasAnyValue = true; break; } 
                 foreach ($list as $v) {
                   $fn = $v['valor_archivo'];
                   if ($fn) {
-                    $href = 'uploads/files/'.rawurlencode($fn);
-                    echo '<a class="btn" href="'.$href.'" download="'.htmlspecialchars($fn).'">Descargar</a>';
+                    $href = BASE_URL . '/controllers/docente/evidencia-archivo.php?id=' . (int)$id . '&descargar=1';
+                    echo '<a class="btn" href="'.htmlspecialchars($href, ENT_QUOTES, 'UTF-8').'">Descargar</a>';
                   }
                 }
                 echo '</div>';
               } elseif ($gs === 'texto_corto') {
                 $chips = array_filter(array_map(fn($v)=>trim((string)$v['valor_texto']), $list));
-                echo $chips ? '<div style="display:flex; flex-wrap:wrap; gap:6px;">'.implode('', array_map(fn($t)=>'<span class="badge">'.$t.'</span>', $chips)).'</div>' : '<span class="badge secondary">Sin datos</span>';
+                echo $chips ? '<div style="display:flex; flex-wrap:wrap; gap:6px;">'.implode('', array_map(fn($t)=>'<span class="badge">'.htmlspecialchars($t, ENT_QUOTES, 'UTF-8').'</span>', $chips)).'</div>' : '<span class="badge secondary">Sin datos</span>';
               } elseif ($gs === 'texto_largo') {
                 foreach ($list as $v) {
                   $txt = trim((string)$v['valor_largo']);
@@ -134,10 +144,10 @@ foreach ($values as $list) { if (!empty($list)) { $hasAnyValue = true; break; } 
                   $vals[] = ($gs==='entero') ? (string)$v['valor_int'] : (string)$v['valor_decimal'];
                 }
                 $vals = array_filter($vals, fn($x)=>$x!=='');
-                echo $vals ? '<div style="display:flex; flex-wrap:wrap; gap:6px;">'.implode('', array_map(fn($t)=>'<span class="badge">'.$t.'</span>', $vals)).'</div>' : '<span class="badge secondary">Sin datos</span>';
+                echo $vals ? '<div style="display:flex; flex-wrap:wrap; gap:6px;">'.implode('', array_map(fn($t)=>'<span class="badge">'.htmlspecialchars($t, ENT_QUOTES, 'UTF-8').'</span>', $vals)).'</div>' : '<span class="badge secondary">Sin datos</span>';
               } elseif ($gs === 'fecha') {
                 $vals = array_filter(array_map(fn($v)=>$v['valor_fecha'], $list));
-                echo $vals ? '<div style="display:flex; flex-wrap:wrap; gap:6px;">'.implode('', array_map(fn($t)=>'<span class="badge">'.$t.'</span>', $vals)).'</div>' : '<span class="badge secondary">Sin datos</span>';
+                echo $vals ? '<div style="display:flex; flex-wrap:wrap; gap:6px;">'.implode('', array_map(fn($t)=>'<span class="badge">'.htmlspecialchars((string)$t, ENT_QUOTES, 'UTF-8').'</span>', $vals)).'</div>' : '<span class="badge secondary">Sin datos</span>';
               } elseif ($gs === 'booleano') {
                 $vals = array_map(fn($v)=> (int)$v['valor_bool'] === 1 ? 'Sí' : 'No', $list);
                 echo $vals ? '<div style="display:flex; flex-wrap:wrap; gap:6px;">'.implode('', array_map(fn($t)=>'<span class="badge">'.$t.'</span>', $vals)).'</div>' : '<span class="badge secondary">Sin datos</span>';

@@ -1,5 +1,5 @@
 # Copia la hoja PDF de prueba a las rutas que utiliza la plataforma.
-# Ejecutar antes de importar demostracion_completa.sql.
+# Ejecutar antes de importar demostracion_completa.sql sobre la base v2.
 [CmdletBinding()]
 param()
 
