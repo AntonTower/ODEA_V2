@@ -1,6 +1,7 @@
 <?php
+require_once __DIR__ . '/sesion.php';
 // Validar que el rol en sesión tenga permiso de acceder a la página actual
-if (session_status() === PHP_SESSION_NONE) { session_start(); }
+iniciarSesionSegura();
 
 $user_role = $_SESSION['ROL'] ?? null;
 require_once CONFIG_DIR . '/menu_config.php';

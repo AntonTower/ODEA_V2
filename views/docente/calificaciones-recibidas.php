@@ -155,6 +155,10 @@ if ($rsI = mysqli_query($conn, $qI)) {
             </div>
           </div>
           <div style="margin-top:8px;">
+            <div class="text-sm text-muted-foreground">Estado de revisión</div>
+            <div id="califEstadoRevision">Sin revisión registrada</div>
+          </div>
+          <div style="margin-top:8px;">
             <div class="text-sm text-muted-foreground">Comentario</div>
             <div id="califComentario" style="white-space:pre-wrap;">—</div>
           </div>
@@ -174,6 +178,7 @@ if ($rsI = mysqli_query($conn, $qI)) {
     </div>
     <div class="dialog-actions">
       <a id="btnIrDetalles" class="btn" href="#" target="_self" rel="nofollow">Ir a detalles de la evidencia</a>
+      <button class="btn" type="button" id="btnHistorialDocente">Ver historial</button>
       <button class="btn btn-primary" type="button" id="btnCerrarCalif">Cerrar</button>
     </div>
   </div>
@@ -318,6 +323,7 @@ window.openVerCalificacion = function(eviId, instId){
   document.getElementById('califUmbral').textContent = '—';
   document.getElementById('califResultado').textContent = '—';
   document.getElementById('califComentario').textContent = '—';
+  document.getElementById('califEstadoRevision').textContent = 'Sin revisión registrada';
   document.getElementById('califFecha').textContent = '—';
   document.getElementById('califAct').textContent = '—';
   document.getElementById('califBadge').textContent = '—';
@@ -347,6 +353,7 @@ window.openVerCalificacion = function(eviId, instId){
       document.getElementById('califInst').textContent = (row.abreviatura || 'INS') + ' — ' + (row.nombre_completo || '');
       document.getElementById('califTipo').textContent = esNum ? 'NUMÉRICA' : 'APROBACIÓN';
       document.getElementById('califComentario').textContent = com || '—';
+      document.getElementById('califEstadoRevision').textContent = row.estado_nombre || 'Sin revisión registrada';
       document.getElementById('califFecha').textContent = (row.calificado_en || '—');
       document.getElementById('califAct').textContent = (row.actualizado_en || '—');
       document.getElementById('califResultado').textContent = (res === null || typeof res === 'undefined') ? 'Sin calificar' : res;
@@ -368,6 +375,15 @@ window.openVerCalificacion = function(eviId, instId){
       }
 
       __openCalifModal();
+      document.getElementById('btnHistorialDocente').onclick = function(){
+        fetch('<?= BASE_URL ?>/controllers/evaluador/evaluacion-historial.php?id_evidencia='+encodeURIComponent(eviId)+'&id_instrumento='+encodeURIComponent(instId))
+          .then(r=>r.json()).then(h=>{
+            if (!h || h.status!=='ok') throw new Error(h?.message || 'No se pudo consultar el historial.');
+            const esc=v=>{ const d=document.createElement('div'); d.textContent=String(v??''); return d.innerHTML; };
+            const html=(h.historial||[]).map(x=>`${esc(x.creado_en)} · ${esc(x.tipo_evento)} · ${esc(x.estado_nuevo||'Sin estado')}<br>${esc(x.comentario_nuevo||x.motivo||'')}`).join('<hr>') || 'Sin eventos.';
+            if (window.Swal) Swal.fire({title:'Historial de evaluación',html,width:700});
+          }).catch(e=>{ if(window.Swal) Swal.fire({icon:'error',title:'Error',text:e.message}); });
+      };
     })
     .catch(()=>{
       if (window.Swal) Swal.fire({icon:'error', title:'Error', text:'No fue posible cargar la evaluación.'});

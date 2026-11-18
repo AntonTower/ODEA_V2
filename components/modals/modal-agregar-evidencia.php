@@ -6,6 +6,13 @@ $qT = "SELECT id_tipo_evidencia, nombre_tipo FROM tipos_de_evidencia ORDER BY no
 if ($resT = mysqli_query($conn, $qT)) {
   while ($row = mysqli_fetch_assoc($resT)) $tipos[] = $row;
 }
+$atributosPorTipo = [];
+$qA = "SELECT a.id_tipo_evidencia, a.nombre_atributo, a.descripcion, a.requerido, ta.nombre_tipo AS tipo_dato, ta.grupo_storage
+       FROM atributos_tipo_evidencia a JOIN tipos_atributo ta ON ta.id_tipo_atributo=a.id_tipo_atributo
+       ORDER BY a.id_tipo_evidencia, a.orden, a.id_ate";
+if ($resA = mysqli_query($conn, $qA)) {
+  while ($row = mysqli_fetch_assoc($resA)) $atributosPorTipo[(int)$row['id_tipo_evidencia']][] = $row;
+}
 $docentes = [];
 if (in_array((int)($user_role ?? 0), [1, 2], true)) {
   $qD = "SELECT id_usuario, nombre, apellidop, apellidom FROM usuarios WHERE rol = 4 AND activo = 1 ORDER BY apellidop, apellidom, nombre";
@@ -62,9 +69,14 @@ if (in_array((int)($user_role ?? 0), [1, 2], true)) {
           </div>
           <div class="form-group">
             <label class="label" for="ae_archivo">Archivo</label>
-            <input class="input" id="ae_archivo" name="archivo" type="file" accept="application/pdf,image/*" required />
+            <input class="input" id="ae_archivo" name="archivo" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" required />
             <p class="text-muted" style="margin:4px 0 0;">PDF / JPG / PNG / WEBP &nbsp;•&nbsp; Máx. 10 MB</p>
           </div>
+        </div>
+        <div id="ae_tipo_info" class="alert" role="status" aria-live="polite">Selecciona un tipo para consultar sus campos.</div>
+        <div id="ae_upload_progress_wrap" hidden aria-live="polite">
+          <progress id="ae_upload_progress" max="100" value="0" style="width:100%;"></progress>
+          <span id="ae_upload_progress_text" class="text-muted">Preparando carga…</span>
         </div>
       </form>
     </div>
@@ -89,6 +101,38 @@ if (in_array((int)($user_role ?? 0), [1, 2], true)) {
   const openBtn   = document.getElementById('openModalAgregarEvidencia');
   const btnCancel = document.getElementById('btnCancelAddEvi');
   const form      = document.getElementById('formAddEvi');
+  const tipoInfo = document.getElementById('ae_tipo_info');
+  const tipoAttrs = <?= json_encode($atributosPorTipo, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+  const tipoSelect = document.getElementById('ae_tipo');
+  const progressWrap = document.getElementById('ae_upload_progress_wrap');
+  const progressBar = document.getElementById('ae_upload_progress');
+  const progressText = document.getElementById('ae_upload_progress_text');
+
+  tipoSelect.addEventListener('change', function(){
+    const attrs = tipoAttrs[this.value] || [];
+    tipoInfo.replaceChildren();
+    const title=document.createElement('strong'); title.textContent='Campos del tipo seleccionado'; tipoInfo.appendChild(title);
+    if (!attrs.length) { tipoInfo.append(' — Este tipo no tiene atributos definidos.'); return; }
+    const required=attrs.filter(a=>Number(a.requerido)===1), optional=attrs.filter(a=>Number(a.requerido)!==1);
+    const render=(label,list)=>{const p=document.createElement('p');p.style.margin='6px 0 0';const b=document.createElement('strong');b.textContent=label+': ';p.appendChild(b);p.append(list.length?list.map(a=>a.nombre_atributo).join(', '):'Ninguno');tipoInfo.appendChild(p);};
+    render('Obligatorios',required); render('Opcionales',optional);
+    const described=attrs.filter(a=>a.descripcion);
+    if(described.length){const p=document.createElement('p');p.style.margin='6px 0 0';p.textContent='Indicaciones: '+described.map(a=>a.nombre_atributo+' — '+a.descripcion).join(' | ');tipoInfo.appendChild(p);}
+    const note=document.createElement('p');note.style.margin='6px 0 0';note.textContent='Los atributos se capturan o completan después de crear la evidencia.';tipoInfo.appendChild(note);
+  });
+
+  // Promise compatible con el manejador existente y seguimiento del progreso de carga.
+  function fetch(url, options){
+    return new Promise((resolve,reject)=>{
+      const xhr=new XMLHttpRequest(); xhr.open(options.method||'GET',url);
+      const csrf=document.querySelector('meta[name="csrf-token"]')?.content;
+      if(csrf) xhr.setRequestHeader('X-CSRF-Token',csrf);
+      xhr.upload.addEventListener('progress',event=>{if(event.lengthComputable){progressWrap.hidden=false;const pct=Math.round(event.loaded*100/event.total);progressBar.value=pct;progressText.textContent='Cargando archivo: '+pct+'%';}});
+      xhr.onload=()=>resolve({status:xhr.status,text:()=>Promise.resolve(xhr.responseText)});
+      xhr.onerror=()=>reject(new Error('No se pudo completar la carga. Verifica tu conexión e inténtalo de nuevo.'));
+      xhr.send(options.body);
+    });
+  }
 
   function open() {
     modal.setAttribute('data-open','true');
@@ -100,6 +144,9 @@ if (in_array((int)($user_role ?? 0), [1, 2], true)) {
     backdrop.setAttribute('data-open','false');
     if (typeof window.lockPageScroll === 'function') lockPageScroll(false);
     if (form) form.reset();
+    if (progressWrap) progressWrap.hidden = true;
+    if (progressBar) progressBar.value = 0;
+    if (tipoInfo) tipoInfo.textContent = 'Selecciona un tipo para consultar sus campos.';
   }
 
   if (openBtn)   openBtn.addEventListener('click', open);
@@ -121,6 +168,7 @@ if (in_array((int)($user_role ?? 0), [1, 2], true)) {
 
     btnSubmit.disabled = true;
     const fd = new FormData(form);
+    progressWrap.hidden = false; progressBar.value = 0; progressText.textContent = 'Preparando carga…';
 
     fetch('<?= BASE_URL ?>/controllers/docente/evidencia-insert.php', { method:'POST', body:fd })
       .then(async r=>{
@@ -132,6 +180,9 @@ if (in_array((int)($user_role ?? 0), [1, 2], true)) {
         if (d && d.status === 'ok') {
           if (typeof window.closeAddEviModal === 'function') window.closeAddEviModal();
           if (typeof loadTableE === 'function') loadTableE();
+          const warnings = Array.isArray(d.advertencias) ? d.advertencias : [];
+          if (warnings.length && window.Swal) { Swal.fire({icon:'warning', title:'Creada con advertencia', text:warnings.join(' ')}); return; }
+          if (d.procesamiento && d.procesamiento.estado === 'NO_DISPONIBLE' && window.Swal) { Swal.fire({icon:'success', title:'Evidencia creada', text:'El archivo se guardó. El módulo de procesamiento aún no está disponible.'}); return; }
           if (window.Swal) Swal.fire({icon:'success', title:'Creada', text:'La evidencia se creó correctamente.'});
         } else {
           const msg = (d && d.message) ? d.message : 'No se pudo crear la evidencia.';

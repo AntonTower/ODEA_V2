@@ -53,12 +53,14 @@ $sql = "SELECT
         LEFT JOIN (
           SELECT id_tipo_evidencia, COUNT(*) AS total
           FROM atributos_tipo_evidencia
+          WHERE requerido = 1
           GROUP BY id_tipo_evidencia
         ) ta ON ta.id_tipo_evidencia = e.id_tipo_evidencia
         LEFT JOIN (
-          SELECT id_evidencia, COUNT(DISTINCT id_ate) AS filled
-          FROM evidencia_valores_atributo
-          GROUP BY id_evidencia
+          SELECT v.id_evidencia, COUNT(DISTINCT v.id_ate) AS filled
+          FROM evidencia_valores_atributo v
+          INNER JOIN atributos_tipo_evidencia a ON a.id_ate=v.id_ate AND a.requerido=1
+          GROUP BY v.id_evidencia
         ) vv ON vv.id_evidencia = e.id_evidencia
         LEFT JOIN (
           SELECT te.id_tipo_evidencia, COUNT(DISTINCT ite.id_instrumento) AS total_inst
@@ -137,7 +139,7 @@ $res = $stmt->get_result();
           $gradedInst  = (int)$row['graded_inst'];
 
           // Solo 100% y con al menos 1 instrumento
-          if ($totalAttrs <= 0 || $filledAttrs < $totalAttrs || $totalInst <= 0) continue;
+          if ($filledAttrs < $totalAttrs || $totalInst <= 0) continue;
 
           $pct = 100;
           $href = $file ? (BASE_URL . '/controllers/docente/evidencia-archivo.php?id=' . $id . '&amp;descargar=1') : '';
@@ -180,7 +182,7 @@ $res = $stmt->get_result();
         <td><?= htmlspecialchars($docN ?: '—') ?></td>
         <td><?= $btnPreview ?><?= $btnDownload ?></td>
         <td><span class="badge" title="<?= htmlspecialchars($row['fecha_subida'] ?? '') ?>"><?= htmlspecialchars($date) ?></span></td>
-        <td title="<?= $filledAttrs ?>/<?= $totalAttrs ?> atributos">
+        <td title="<?= $filledAttrs ?>/<?= $totalAttrs ?> campos obligatorios">
           <div class="progress"><div class="progress-bar" style="width: 100%;"></div></div>
           <span style="margin-left:8px; font-size:12px; color:var(--muted-foreground,#555);">100%</span>
         </td>

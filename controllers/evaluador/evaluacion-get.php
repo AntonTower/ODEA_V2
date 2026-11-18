@@ -34,7 +34,7 @@ $stmtE->close();
 
 if (!$evi) jexit(false,'Evidencia no encontrada');
 
-if (!in_array($user_role, [1, 2, 3], true)) jexit(false, 'No autorizado para evaluar.');
+if (!in_array($user_role, [1, 2, 3, 4], true)) jexit(false, 'No autorizado.');
 
 // Docente solo su evidencia
 if ($user_role === 4 && (int)$evi['id_docente'] !== (int)$user_id) {
@@ -50,8 +50,9 @@ $sql = "SELECT
           CASE WHEN i.tipo_calificacion = 'NUMERICA' THEN 1 ELSE 0 END AS es_numerico,
           CASE WHEN i.tipo_calificacion = 'NUMERICA' THEN COALESCE(i.min_calificacion, 0)  ELSE 0  END AS cal_min,
           CASE WHEN i.tipo_calificacion = 'NUMERICA' THEN COALESCE(i.max_calificacion, 10) ELSE 1  END AS cal_max,
-          ce.resultado,
-          ce.comentario,
+          COALESCE(ev.resultado,ce.resultado) AS resultado,
+          COALESCE(ev.comentario,ce.comentario) AS comentario,
+          ev.id_estado, COALESCE(ee.codigo,IF(ce.id_calificacion IS NULL,NULL,'PENDIENTE_REVISION')) AS estado_codigo, ee.nombre AS estado_nombre,
           ce.calificado_en,
           ce.actualizado_en
         FROM instrumento_tipo_evidencia ite
@@ -60,12 +61,15 @@ $sql = "SELECT
         LEFT JOIN calificacion_evidencia ce
               ON ce.id_instrumento = i.id_instrumento
              AND ce.id_evidencia   = ?
+        LEFT JOIN evaluaciones_versionadas ev
+              ON ev.id_instrumento=i.id_instrumento AND ev.id_evidencia=? AND ev.id_version IS NULL
+        LEFT JOIN estados_evaluacion ee ON ee.id_estado=ev.id_estado
         WHERE ($alcance) AND ite.id_tipo_evidencia = ?
         ORDER BY i.id_instrumento ASC";
 
 $stmt = $conn->prepare($sql);
 $tid  = (int)$evi['id_tipo_evidencia'];
-$stmt->bind_param('ii', $id, $tid);
+$stmt->bind_param('iii', $id, $id, $tid);
 $stmt->execute();
 $rs = $stmt->get_result();
 
@@ -88,4 +92,14 @@ if ($rs) {
 }
 $stmt->close();
 
-jexit(true, '', ['evidencia'=>$evi, 'instrumentos'=>$rows]);
+$estados=$conn->query('SELECT codigo,nombre FROM estados_evaluacion WHERE activo=1 ORDER BY orden,id_estado')->fetch_all(MYSQLI_ASSOC);
+$versiones=$conn->query("SELECT v.id_version,v.id_convocatoria,v.codigo_version,v.nombre,
+    c.id_instrumento,c.nombre AS convocatoria,p.nombre AS periodo
+    FROM versiones_criterios v JOIN convocatorias c ON c.id_convocatoria=v.id_convocatoria
+    JOIN periodos_academicos p ON p.id_periodo=c.id_periodo
+    WHERE v.estado='PUBLICADA' AND c.estado='ACTIVA' AND p.estado='ACTIVO'")->fetch_all(MYSQLI_ASSOC);
+$versionesPorInstrumento=[];
+foreach ($versiones as $version) $versionesPorInstrumento[(int)$version['id_instrumento']][]=$version;
+foreach ($rows as &$r) $r['versiones']=$versionesPorInstrumento[(int)$r['id_instrumento']]??[];
+unset($r);
+jexit(true, '', ['evidencia'=>$evi, 'instrumentos'=>$rows, 'estados'=>$estados]);

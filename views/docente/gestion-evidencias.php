@@ -24,8 +24,7 @@ require_once CONFIG_DIR . '/evidencias.php';
 
 $usuarioActual = evidenciaUsuarioActual($conn);
 if ((int)$usuarioActual['id_usuario'] <= 0) {
-  $_SESSION = [];
-  session_destroy();
+  destruirSesionSegura();
   header('Location: ' . BASE_URL . '/public/login.php');
   exit;
 }
@@ -203,6 +202,7 @@ function initDTE(){
         case 'details': window.openVerDetalles(id); break;
         case 'edit': window.openEditarEvidencia(id); break;
         case 'delete': window.openEliminarEvi(id, this.dataset.title || ''); break;
+        case 'processing': window.openProcesamientoEvidencia(id); break;
       }
     });
 
@@ -235,6 +235,35 @@ function initDTE(){
 // Ver detalles
 window.openVerDetalles = function(id){
   window.location.href = '<?= BASE_URL ?>/views/docente/evidencia-detalle.php?id=' + encodeURIComponent(id);
+};
+
+window.openProcesamientoEvidencia = function(id){
+  fetch('<?= BASE_URL ?>/controllers/docente/procesamiento-estado.php?id='+encodeURIComponent(id))
+    .then(r=>r.json()).then(j=>{
+      if(!j || j.status!=='ok') throw new Error(j?.message||'No se pudo consultar el procesamiento.');
+      const escapeHtml=value=>{const node=document.createElement('div');node.textContent=String(value??'');return node.innerHTML;};
+      const labels={PENDIENTE:'Pendiente',EN_PROCESO:'En proceso',PROCESADO:'Procesado',REQUIERE_REVISION:'Requiere revisión',ERROR:'Error',CANCELADO:'Cancelado'};
+      const items=j.trabajos||[];
+      const html=items.length?items.map(t=>`<section style="text-align:left;border-bottom:1px solid #ddd;padding:10px 0">
+        <strong>${t.tipo_origen==='EVIDENCIA'?'Documento principal':'Documento adjunto'}</strong>
+        <div>Estado: ${escapeHtml(labels[t.estado]||t.estado)}${t.procesado_en?' · '+escapeHtml(t.procesado_en):''}</div>
+        ${t.mensaje_error?`<div role="status">${escapeHtml(t.mensaje_error)}</div>`:''}
+        ${Number(t.resultado_disponible)?`<button type="button" class="btn processing-result" data-job="${Number(t.id_trabajo)}">Revisar texto y metadatos</button>`:''}
+        ${Number(t.can_retry)&&['ERROR','CANCELADO'].includes(t.estado)?`<button type="button" class="btn btn-primary processing-retry" data-id="${Number(t.id_trabajo)}">Reintentar</button>`:''}
+      </section>`).join(''):(!j.disponible?'<p>La infraestructura de procesamiento aún no está configurada. La carga del documento se conserva.</p>':'<p>El documento aún no se ha encolado. La carga se conserva y puedes volver a guardar el archivo para programarlo.</p>');
+      Swal.fire({title:'Procesamiento documental',html,width:720,showConfirmButton:true,didOpen:()=>{
+        document.querySelectorAll('.processing-result').forEach(button=>button.addEventListener('click',()=>{
+          window.location.href='<?= BASE_URL ?>/views/docente/revision-metadatos.php?id_evidencia='+encodeURIComponent(id)+'&id_trabajo='+encodeURIComponent(button.dataset.job);
+        }));
+        document.querySelectorAll('.processing-retry').forEach(button=>button.addEventListener('click',()=>{
+          const token=document.querySelector('meta[name="csrf-token"]')?.content||'';
+          const body=new FormData();body.append('id_trabajo',button.dataset.id);
+          fetch('<?= BASE_URL ?>/controllers/docente/procesamiento-reintentar.php',{method:'POST',headers:{'X-CSRF-Token':token},body})
+            .then(r=>r.json()).then(result=>{if(!result||result.status!=='ok')throw new Error(result?.message||'No se pudo reintentar.');Swal.fire({icon:'success',title:'En cola',text:result.message}).then(()=>window.openProcesamientoEvidencia(id));})
+            .catch(error=>Swal.fire({icon:'error',title:'Error',text:error.message}));
+        }));
+      }});
+    }).catch(error=>Swal.fire({icon:'error',title:'Error',text:error.message}));
 };
 
 // Editar (solo docentes o si decides permitir admin)

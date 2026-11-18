@@ -10,11 +10,15 @@ if (function_exists('header_remove')) { header_remove('X-Powered-By'); }
 // Arranca buffers para poder limpiar cualquier salida previa
 if (ob_get_level() === 0) { ob_start(); }
 
-require_once __DIR__ . '/validacion.php';
-require_once __DIR__ . '/conexion.php';
+require_once __DIR__ . '/../../config/paths.php';
+require_once CONFIG_DIR . '/sesion.php';
+require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/seguridad.php';
+$usuarioActual = seguridadUsuarioActual($conn);
+if (!(int)$usuarioActual['id_usuario']) json_out(['status'=>'error','message'=>'Sesión no autorizada'], 401);
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
+$user_role = (int)$usuarioActual['rol'];
 
 const NUMERIC_PASS_PCT = 0.60;
 
@@ -115,6 +119,7 @@ $action = $_GET['action'] ?? '';
 if ($action === 'list') {
   $instId = isset($_GET['instrumento']) ? (int)$_GET['instrumento'] : 0;
   if ($instId <= 0) json_out(['status'=>'error','message'=>'Instrumento inválido'], 400);
+  if (!seguridadPuedeAccederInstrumento($conn, $usuarioActual, $instId)) json_out(['status'=>'error','message'=>'No autorizado para este instrumento'], 403);
 
   $items = get_aprobadas($conn, $instId, $user_id, $user_role);
 
@@ -140,6 +145,7 @@ if ($action === 'zip') {
   $instId = isset($_GET['instrumento']) ? (int)$_GET['instrumento'] : 0;
   $idsStr = $_GET['ids'] ?? '';
   if ($instId <= 0 || $idsStr === '') text_out('Parámetros inválidos', 400);
+  if (!seguridadPuedeAccederInstrumento($conn, $usuarioActual, $instId)) text_out('No autorizado para este instrumento', 403);
 
   $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', $idsStr)), fn($v)=>$v>0)));
   if (empty($ids)) text_out('IDs inválidos', 400);
@@ -159,7 +165,7 @@ if ($action === 'zip') {
     header('Content-Type: text/html; charset=UTF-8');
     echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Descargas</title></head><body>";
     foreach ($seleccion as $s) {
-      $href = 'uploads/files/'.rawurlencode($s['archivo']);
+      $href = BASE_URL.'/controllers/docente/evidencia-archivo.php?id='.(int)$s['id'].'&descargar=1';
       $href = htmlspecialchars($href, ENT_QUOTES, 'UTF-8');
       echo "<a href=\"{$href}\" download style=\"display:none;\" class=\"dl\"></a>";
     }
@@ -181,9 +187,8 @@ if ($action === 'zip') {
 
   $added = 0;
   foreach ($seleccion as $s) {
-    $rel = 'uploads/files/'.$s['archivo'];
-    $abs = __DIR__ . '/' . $rel; // ruta absoluta
-    if (!is_file($abs)) continue;
+    $abs = seguridadResolverArchivo((string)$s['archivo']);
+    if (!$abs) continue;
     $ext  = pathinfo($abs, PATHINFO_EXTENSION);
     $name = safe_filename($s['titulo']);
     $entry = sprintf('%03d - %s%s', (int)$s['id'], $name, $ext ? ('.'.$ext) : '');

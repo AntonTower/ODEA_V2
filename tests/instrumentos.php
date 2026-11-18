@@ -3,10 +3,12 @@
 if (PHP_SAPI !== 'cli') exit;
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 chdir(dirname(__DIR__));
-$db = new mysqli('localhost', 'root', '');
+require_once 'config/paths.php';
+require_once CONFIG_DIR . '/documentos.php';
+$db = new mysqli('127.0.0.1', 'root', '', '', 3308);
 $db->set_charset('utf8mb4');
 $nombre = 'gestor_test_instrumentos_'.bin2hex(random_bytes(5));
-$sql = "CREATE DATABASE `$nombre` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; USE `$nombre`;\n".file_get_contents('sql/gestor_evidencia_produccion_v2.sql');
+$sql = "CREATE DATABASE `$nombre` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; USE `$nombre`;\n".file_get_contents('sql/gestor_evidencia_produccion_v2.sql')."\n".file_get_contents('sql/migrations/20261118_integridad_documental.sql')."\n".file_get_contents('sql/migrations/20261119_modelo_academico_versionado.sql')."\n".file_get_contents('sql/migrations/20261120_historial_estados_evaluacion.sql')."\n".file_get_contents('sql/migrations/20261121_procesamiento_documental.sql');
 $runner = tempnam(sys_get_temp_dir(), 'instrumentos_');
 $archivoPrueba = 'test_visor_'.bin2hex(random_bytes(8)).'.pdf';
 $rutaPrueba = getcwd().'/uploads/files/'.$archivoPrueba;
@@ -18,11 +20,28 @@ function comprobar($ok, $mensaje) {
     $checks++;
     echo "OK: $mensaje\n";
 }
-function endpoint($archivo, $usuario, $rol, $post=[], $get=[], $json=true) {
+function endpoint($archivo, $usuario, $rol, $post=[], $get=[], $json=true, $csrf='valid') {
     global $runner, $nombre;
+    $ruta = getcwd().'/'.$archivo;
+    if (!is_file($ruta)) {
+        $coincidencias = array_merge(
+            glob(getcwd().'/controllers/*/'.$archivo) ?: [],
+            glob(getcwd().'/views/*/'.$archivo) ?: []
+        );
+        if (!$coincidencias) throw new RuntimeException("No se encontró endpoint/vista: $archivo");
+        $ruta = $coincidencias[0];
+    }
     $session = ['ID'=>$usuario, 'ROL'=>$rol, 'SESUSUARIO'=>'Prueba', 'APELLIDO'=>'Prueba', 'EMAIL'=>'test@example.invalid', 'RNOMBRE'=>'Prueba'];
     $sessionId = str_replace('_', '-', $nombre);
-    $codigo = '<?php session_save_path(sys_get_temp_dir()); session_id('.var_export($sessionId,true).'); session_start(); register_shutdown_function(function(){ if (session_status() === PHP_SESSION_ACTIVE) session_destroy(); }); $_SESSION='.var_export($session,true).'; $_POST='.var_export($post,true).'; $_GET='.var_export($get,true).'; putenv('.var_export('GESTOR_DB_NAME='.$nombre,true).'); include '.var_export(getcwd().'/'.$archivo,true).';';
+    $token = str_repeat('c', 64);
+    $scriptName = '/' . str_replace('\\', '/', str_replace(getcwd().'/', '', $ruta));
+    $server = ['REQUEST_METHOD' => empty($post) ? 'GET' : 'POST', 'SCRIPT_NAME' => $scriptName];
+    $session['_CSRF_TOKEN'] = str_repeat('c', 64);
+    $session['_CSRF_CREATED'] = time();
+    if ($csrf === 'valid') $server['HTTP_X_CSRF_TOKEN'] = $token;
+    if ($csrf === 'invalid') $server['HTTP_X_CSRF_TOKEN'] = str_repeat('d', 64);
+    if ($csrf === 'body') $post['csrf_token'] = $token;
+    $codigo = '<?php session_save_path(sys_get_temp_dir()); session_id('.var_export($sessionId,true).'); session_start(); set_include_path('.var_export(getcwd().'/config',true).'.PATH_SEPARATOR.'.var_export(getcwd().'/views/evaluador',true).'.PATH_SEPARATOR.get_include_path()); register_shutdown_function(function(){ if (session_status() === PHP_SESSION_ACTIVE) session_destroy(); }); $_SESSION='.var_export($session,true).'; $_POST='.var_export($post,true).'; $_GET='.var_export($get,true).'; $_SERVER=array_merge($_SERVER,'.var_export($server,true).'); putenv('.var_export('GESTOR_DB_NAME='.$nombre,true).'); include '.var_export($ruta,true).';';
     file_put_contents($runner, $codigo);
     $proceso = proc_open([PHP_BINARY, $runner], [1=>['pipe','w'], 2=>['pipe','w']], $pipes);
     $salida = stream_get_contents($pipes[1]);
@@ -41,25 +60,53 @@ try {
     $db->select_db($nombre);
     comprobar($db->query("SHOW COLUMNS FROM tipos_de_evidencia")->num_rows===3, 'Esquema sin columnas heredadas');
     comprobar((int)$db->query('SELECT COUNT(*) FROM evaluador_instrumento')->fetch_row()[0]===1, 'Asignación inicial del evaluador conservada');
+    $tablaGestion=endpoint('vista-gestion-evidencias.php',1,1,[],[],false);
+    comprobar(strpos($tablaGestion,'Procesamiento')!==false,'Gestión de evidencias renderiza el estado del módulo documental');
+    $antesInst=(int)$db->query('SELECT COUNT(*) FROM instrumentos')->fetch_row()[0];
+    $postInst=['abreviatura'=>'CSRFNO','nombre_completo'=>'Debe rechazarse'];
+    $sinToken=endpoint('instrumento-insert.php',1,1,$postInst,[],true,'missing');
+    comprobar($sinToken['code']==='csrf_invalid' && (int)$db->query('SELECT COUNT(*) FROM instrumentos')->fetch_row()[0]===$antesInst,'POST administrativo sin token rechazado sin cambios');
+    $tokenIncorrecto=endpoint('instrumento-insert.php',1,1,$postInst,[],true,'invalid');
+    comprobar($tokenIncorrecto['code']==='csrf_invalid' && (int)$db->query('SELECT COUNT(*) FROM instrumentos')->fetch_row()[0]===$antesInst,'POST administrativo con token incorrecto rechazado');
     $datos = ['nombre'=>'Evaluador', 'apellidop'=>'Prueba', 'apellidom'=>'Temporal', 'correo'=>'evaluador@test.invalid', 'rol'=>3, 'activo'=>1, 'password'=>'prueba123', 'confirm_password'=>'prueba123', 'instrumentos'=>[1,2]];
     $r=endpoint('usuario-insert.php',1,1,$datos);
     comprobar($r['status']==='ok','Alta de evaluador con varios instrumentos');
     $uid=$r['id'];
+    $db->query("INSERT INTO usuarios (nombre,apellidop,apellidom,correo,password,rol,activo) VALUES ('Docente','Prueba','Ajeno','docente.ajeno@example.invalid','hash-temporal',4,1)");
+    $docenteAjenoId=$db->insert_id;
     $r=endpoint('usuario-get.php',1,1,[],['id'=>$uid]);
     comprobar($r['user']['instrumentos']===[1,2], 'Lectura de asignaciones');
     $db->query("INSERT INTO tipos_de_evidencia (nombre_tipo) VALUES ('Tipo temporal')"); $tid=$db->insert_id;
     $db->query("INSERT INTO atributos_tipo_evidencia (id_tipo_evidencia,id_tipo_atributo,nombre_atributo,slug) VALUES ($tid,1,'Texto','texto')"); $aid=$db->insert_id;
     $db->query("INSERT INTO evidencias (id_docente,id_tipo_evidencia,titulo,archivo) VALUES (2,$tid,'Prueba permisos','test.pdf')"); $eid=$db->insert_id;
     $db->query("INSERT INTO evidencia_valores_atributo (id_evidencia,id_ate,valor_texto) VALUES ($eid,$aid,'Completo')");
+    comprobar(endpoint('evidencia-update.php',2,4,['id_evidencia'=>$eid,'titulo'=>'No cambiar tipo con atributos','id_tipo_evidencia'=>1])['status']==='error' && (int)$db->query("SELECT id_tipo_evidencia FROM evidencias WHERE id_evidencia=$eid")->fetch_row()[0]===$tid, 'Cambio de tipo con atributos existentes rechazado sin perder datos');
+    $hashPrueba=hash('sha256','contenido duplicado de prueba');
+    $db->query("INSERT INTO evidencias (titulo,archivo,archivo_sha256,archivo_mime,archivo_bytes,id_docente,id_tipo_evidencia) VALUES ('Duplicado propio','dup1.pdf','$hashPrueba','application/pdf',29,2,$tid),('Duplicado ajeno','dup2.pdf','$hashPrueba','application/pdf',29,$docenteAjenoId,$tid)");
+    $coincidencias=documentoCoincidencias($db,$hashPrueba,2);
+    comprobar($coincidencias['mismo_docente'] && $coincidencias['posible_coincidencia'], 'Hash detecta coincidencia propia y externa sin exponer IDs ni datos');
     $db->query("INSERT INTO instrumento_tipo_evidencia (id_instrumento,id_tipo_evidencia) VALUES (1,$tid),(2,$tid),(3,$tid)");
+    $csrfEval=endpoint('evaluacion-save.php',$uid,3,['id_evidencia'=>$eid,'id_instrumento'=>1,'resultado'=>'1'],[],true,'missing');
+    comprobar($csrfEval['code']==='csrf_invalid','Evaluación sin token rechazada antes de guardar');
+    $csrfOcultar=endpoint('evidencia-eliminar.php',2,4,['id_evidencia'=>$eid],[],true,'missing');
+    comprobar($csrfOcultar['code']==='csrf_invalid','Ocultamiento de evidencia sin token rechazado');
     copy('sql/prueba/Evidencia de prueba.pdf', $rutaPrueba);
     $db->query("UPDATE evidencias SET archivo='$archivoPrueba' WHERE id_evidencia=$eid");
+    $tipoArchivo=(int)$db->query("SELECT id_tipo_atributo FROM tipos_atributo WHERE grupo_storage='archivo' LIMIT 1")->fetch_row()[0];
+    $db->query("INSERT INTO atributos_tipo_evidencia (id_tipo_evidencia,id_tipo_atributo,nombre_atributo,slug,requerido) VALUES ($tid,$tipoArchivo,'Archivo adjunto','adjunto',0)"); $idAtributoArchivo=$db->insert_id;
+    $db->query("INSERT INTO evidencia_valores_atributo (id_evidencia,id_ate,indice,valor_archivo,valor_archivo_sha256,valor_archivo_mime,valor_archivo_bytes) VALUES ($eid,$idAtributoArchivo,1,'$archivoPrueba','".hash_file('sha256',$rutaPrueba)."','application/pdf',".filesize($rutaPrueba).")"); $idValorArchivo=$db->insert_id;
     $visor=endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid],false);
     comprobar(strpos($visor,'Contenido del documento')!==false, 'Visor PDF disponible para evaluador asignado');
     $contenido=endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid,'contenido'=>1],false);
     comprobar($contenido===file_get_contents($rutaPrueba), 'Vista previa entrega el PDF completo');
+    comprobar(endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid,'valor_archivo_id'=>$idValorArchivo,'descargar'=>1],false)===$contenido, 'Descarga de archivo de atributo resuelve su propio valor');
+    comprobar(strpos(endpoint('evidencia-archivo.php',$docenteAjenoId,4,[],['id'=>$eid,'valor_archivo_id'=>$idValorArchivo,'descargar'=>1],false),'No tienes acceso')!==false, 'Docente ajeno no obtiene archivo de atributo');
     comprobar(endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid,'descargar'=>1],false)===$contenido, 'Descarga conserva el archivo original');
-    comprobar(strpos(endpoint('evidencia-archivo.php',5,4,[],['id'=>$eid,'contenido'=>1],false),'No tienes acceso')!==false, 'Docente ajeno no obtiene el documento');
+    comprobar(strpos(endpoint('evidencia-archivo.php',$docenteAjenoId,4,[],['id'=>$eid,'contenido'=>1],false),'No tienes acceso')!==false, 'Docente ajeno no obtiene el documento');
+    comprobar(endpoint('descargas-api.php', $uid, 3, [], ['action'=>'list','instrumento'=>3])['status']==='error', 'Evaluador no lista documentos de instrumento no asignado');
+    $zipNoAutorizado=endpoint('descargas-api.php', $uid, 3, [], ['action'=>'zip','instrumento'=>3,'ids'=>$eid], false);
+    comprobar(strpos($zipNoAutorizado,'No autorizado')!==false, 'ZIP no autorizado rechazado antes de crear archivo');
+    comprobar(endpoint('usuario-get.php',$docenteAjenoId,4,[],['id'=>$uid])['status']==='error', 'Endpoint administrativo restringido directamente al docente');
     comprobar(strpos(endpoint('evidencia-archivo.php',0,0,[],['id'=>$eid],false),'Inicia sesión')!==false, 'Visor requiere sesion');
     $db->query("UPDATE evidencias SET archivo='../../conexion.php' WHERE id_evidencia=$eid");
     comprobar(strpos(endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid,'contenido'=>1],false),'El archivo no está disponible')!==false, 'Visor rechaza rutas fuera de uploads');
@@ -72,6 +119,23 @@ try {
     comprobar(array_map('intval',array_column($r['instrumentos'],'id_instrumento'))===[1,2], 'Solo instrumentos asignados en el modal');
     $nota=['id_evidencia'=>$eid,'id_instrumento'=>1,'resultado'=>'1'];
     comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='ok', 'Calificacion permitida');
+    $notaEstado=['id_evidencia'=>$eid,'id_instrumento'=>1,'codigo_estado'=>'OBSERVADA','comentario'=>'Falta completar un dato'];
+    comprobar(endpoint('evaluacion-save.php',$uid,3,$notaEstado)['status']==='ok','Estado configurable se guarda separado del resultado');
+    $evalActual=$db->query("SELECT resultado,id_estado FROM evaluaciones_versionadas WHERE id_evidencia=$eid AND id_instrumento=1 AND id_version IS NULL")->fetch_assoc();
+    $estadoActual=$db->query("SELECT codigo FROM estados_evaluacion WHERE id_estado=".(int)$evalActual['id_estado'])->fetch_row()[0];
+    comprobar((float)$evalActual['resultado']===1.0 && $estadoActual==='OBSERVADA','Actualización de estado conserva la calificación previa');
+    comprobar((int)$db->query("SELECT COUNT(*) FROM historial_evaluaciones h JOIN evaluaciones_versionadas v ON v.id_evaluacion=h.id_evaluacion WHERE v.id_evidencia=$eid AND v.id_instrumento=1")->fetch_row()[0]===2,'Primera calificación y observación quedan en historial append-only');
+    comprobar((int)$db->query('SELECT COUNT(*) FROM estados_evaluacion')->fetch_row()[0]===6,'Catálogo inicial contiene los seis estados acordados');
+    $inmutable=false; try { $db->query("UPDATE historial_evaluaciones SET motivo='alterado' WHERE id_evaluacion=(SELECT id_evaluacion FROM evaluaciones_versionadas WHERE id_evidencia=$eid AND id_instrumento=1 AND id_version IS NULL)"); } catch (mysqli_sql_exception $e) { $inmutable=true; }
+    comprobar($inmutable,'La base rechaza editar eventos históricos');
+    $histEval=endpoint('evaluacion-historial.php',$uid,3,[],['id_evidencia'=>$eid,'id_instrumento'=>1]);
+    comprobar($histEval['status']==='ok' && count($histEval['historial'])===2,'Evaluador asignado consulta el historial');
+    $db->query("INSERT INTO periodos_academicos (id_instrumento,codigo,nombre,estado) VALUES (1,'TEST','Periodo temporal','ACTIVO')"); $periodoTest=$db->insert_id;
+    $db->query("INSERT INTO convocatorias (id_instrumento,id_periodo,codigo,nombre,estado) VALUES (1,$periodoTest,'TEST','Convocatoria temporal','ACTIVA')"); $convocatoriaTest=$db->insert_id;
+    $db->query("INSERT INTO versiones_criterios (id_convocatoria,codigo_version,nombre,estado,publicada_en) VALUES ($convocatoriaTest,'V1','Versión temporal','PUBLICADA',NOW())"); $versionTest=$db->insert_id;
+    $versionada=['id_evidencia'=>$eid,'id_instrumento'=>1,'id_version'=>$versionTest,'resultado'=>'1','codigo_estado'=>'ACEPTADA'];
+    comprobar(endpoint('evaluacion-save.php',$uid,3,$versionada)['status']==='ok','Evaluación usa una versión publicada de su convocatoria activa');
+    comprobar((int)$db->query("SELECT COUNT(*) FROM evaluaciones_versionadas WHERE id_evidencia=$eid AND id_instrumento=1")->fetch_row()[0]===2,'Una versión nueva conserva el contexto de evaluación anterior');
     $nota['id_instrumento']=3;
     comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='error', 'POST directo sin asignacion rechazado');
     $vista=endpoint('vista-evaluacion.php',$uid,3,[],[],false);
@@ -80,6 +144,7 @@ try {
     comprobar(endpoint('usuario-update.php',1,1,$datos)['status']==='ok','Revocacion desde CRUD');
     $nota['id_instrumento']=1;
     comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='error','Revocacion efectiva con sesion anterior');
+    comprobar(endpoint('evaluacion-historial.php',$uid,3,[],['id_evidencia'=>$eid,'id_instrumento'=>1])['status']==='error','Evaluador sin asignación no consulta historial del instrumento');
     $antes=$db->query("SELECT resultado FROM calificacion_evidencia WHERE id_evidencia=$eid AND id_instrumento=1")->fetch_row();
     comprobar((float)$antes[0]===1.0,'Calificacion historica preservada');
     $datos['instrumentos']=[999999]; $datos['nombre']='No guardar';
@@ -102,6 +167,7 @@ try {
     comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='ok','Calificacion numerica valida');
     $db->query("UPDATE usuarios SET activo=0 WHERE id_usuario=$uid");
     comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='error','Cuenta desactivada no califica');
+    comprobar(strpos(endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid,'contenido'=>1],false),'Inicia sesión')!==false, 'Cuenta inactiva no consulta documentos con sesión previa');
     $db->query("UPDATE usuarios SET activo=1 WHERE id_usuario=$uid");
     $db->query("UPDATE instrumentos SET activo=0 WHERE id_instrumento=$iid");
     comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='error','Instrumento inactivo rechazado');
@@ -122,6 +188,22 @@ try {
     comprobar(endpoint('usuario-update.php',1,1,$datos)['status']==='ok','Cambio de rol');
     comprobar((int)$db->query("SELECT COUNT(*) FROM evaluador_instrumento WHERE id_evaluador=$uid")->fetch_row()[0]===0,'Cambio de rol elimina asignaciones');
     comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='error','Rol vigente prevalece sobre sesion antigua');
+    comprobar(endpoint('evidencia-eliminar.php',1,1,['id_evidencia'=>$eid])['status']==='ok','Ocultamiento de evidencia con token AJAX válido');
+    comprobar((int)$db->query("SELECT ocultar FROM evidencias WHERE id_evidencia=$eid")->fetch_row()[0]===1,'Ocultamiento válido modifica el estado esperado');
+    $textoTipo=(int)$db->query("SELECT id_tipo_atributo FROM tipos_atributo WHERE grupo_storage='texto_corto' LIMIT 1")->fetch_row()[0];
+    $db->query("INSERT INTO tipos_de_evidencia (nombre_tipo) VALUES ('Tipo atributos obligatorios temporal')"); $tipoAtributos=$db->insert_id;
+    $db->query("INSERT INTO atributos_tipo_evidencia (id_tipo_evidencia,id_tipo_atributo,nombre_atributo,slug,requerido,multiple) VALUES ($tipoAtributos,$textoTipo,'Obligatorio','obligatorio',1,0),($tipoAtributos,$textoTipo,'Opcional','opcional',0,0)");
+    $idReq=(int)$db->query("SELECT id_ate FROM atributos_tipo_evidencia WHERE id_tipo_evidencia=$tipoAtributos AND slug='obligatorio'")->fetch_row()[0];
+    $idOpt=(int)$db->query("SELECT id_ate FROM atributos_tipo_evidencia WHERE id_tipo_evidencia=$tipoAtributos AND slug='opcional'")->fetch_row()[0];
+    $db->query("INSERT INTO evidencias (id_docente,id_tipo_evidencia,titulo,archivo) VALUES (2,$tipoAtributos,'Edición atributos','temporal.pdf')"); $idAttrs=$db->insert_id;
+    $postAttrs=['id_evidencia'=>$idAttrs,'indice'=>[$idReq=>[1],$idOpt=>[1]],'valor_texto'=>[$idReq=>[''], $idOpt=>['']]];
+    comprobar(endpoint('evidencia-detalle-save.php',2,4,$postAttrs)['status']==='error','Atributo obligatorio vacío impide guardar');
+    $postAttrs['valor_texto'][$idReq]=['Capturado'];
+    comprobar(endpoint('evidencia-detalle-save.php',2,4,$postAttrs)['status']==='ok','Atributo opcional vacío permite guardar edición');
+    comprobar((int)$db->query("SELECT COUNT(*) FROM evidencia_valores_atributo WHERE id_evidencia=$idAttrs AND id_ate=$idOpt")->fetch_row()[0]===0,'Atributo opcional vacío no se persiste como valor capturado');
+    comprobar(endpoint('evidencia-detalle-get.php',2,4,[],['id'=>$idAttrs])['status']==='ok','Consulta de evidencias y atributos existentes disponible');
+    $db->query("INSERT INTO instrumento_tipo_evidencia (id_instrumento,id_tipo_evidencia) VALUES (1,$tipoAtributos)");
+    comprobar(endpoint('evaluacion-save.php',1,1,['id_evidencia'=>$idAttrs,'id_instrumento'=>1,'resultado'=>'8'])['status']==='ok','Atributo opcional vacío no impide completar ni evaluar la evidencia');
     echo "$checks comprobaciones correctas.\n";
 } finally {
     if ($creada) $db->query("DROP DATABASE `$nombre`");

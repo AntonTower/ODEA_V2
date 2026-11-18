@@ -1,18 +1,15 @@
 <?php
+require_once __DIR__ . '/../../config/csrf.php';
+require_once __DIR__ . '/../../config/seguridad.php';
 // Consultar siempre la cuenta vigente: una sesion antigua no conserva permisos revocados.
 function usuarioActualInstrumentos(mysqli $conn): array {
-    if (session_status() === PHP_SESSION_NONE) session_start();
-    $id = (int)($_SESSION['ID'] ?? 0);
-    $st = $conn->prepare('SELECT id_usuario, rol FROM usuarios WHERE id_usuario=? AND activo=1');
-    $st->bind_param('i', $id);
-    $st->execute();
-    return $st->get_result()->fetch_assoc() ?: ['id_usuario'=>0, 'rol'=>0];
+    return seguridadUsuarioActual($conn);
 }
 
 function exigirGestion(mysqli $conn, string $pagina): void {
     $u = usuarioActualInstrumentos($conn);
     $rol = (int)$u['rol'];
-    $permitido = $rol === 1;
+    $permitido = seguridadPuedeAdministrar($u) && $rol === 1;
     if (!$permitido && $rol === 2) {
         require_once __DIR__ . '/../../config/menu_config.php';
         foreach ($MENU_CONFIG as $item) {
@@ -27,6 +24,9 @@ function exigirGestion(mysqli $conn, string $pagina): void {
         http_response_code(403);
         echo json_encode(['status'=>'error', 'message'=>'No autorizado para administrar este catalogo.']);
         exit;
+    }
+    if (in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+        csrf_exigir();
     }
 }
 

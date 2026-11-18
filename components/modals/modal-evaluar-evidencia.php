@@ -167,6 +167,10 @@
               <div class="eval-meta">${esNum ? `Rango: ${min} – ${max}` : `Aprobación: 1=Sí, 0=No`}</div>
             </div>
             <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+              <select class="input" id="version_${idInst}" aria-label="Contexto académico">
+                <option value="0">Contexto sin versión</option>
+                ${(it.versiones||[]).map(v=>`<option value="${Number(v.id_version)}">${escapeHtml([v.periodo,v.convocatoria,v.codigo_version].filter(Boolean).join(' · '))}</option>`).join('')}
+              </select>
               ${
                 esNum
                 ? `<input type="number" class="input" id="res_${idInst}" placeholder="calificación"
@@ -178,13 +182,25 @@
                    </select>`
               }
               <input type="text" class="input" id="com_${idInst}" placeholder="Comentario (opcional)" style="flex:1;" ${com?`value="${escapeAttr(com)}"`:''}>
+              <select class="input" id="estado_${idInst}" aria-label="Estado de revisión">
+                ${(j.estados||[]).map(s=>`<option value="${escapeAttr(s.codigo)}" ${it.estado_codigo===s.codigo?'selected':''}>${escapeHtml(s.nombre)}</option>`).join('')}
+              </select>
+              <input type="text" class="input" id="motivo_${idInst}" placeholder="Motivo del cambio (opcional)" style="flex:1;">
               <button class="btn btn-primary" type="button" onclick="saveEval(${eviId}, ${idInst}, ${esNum?1:0}, ${min}, ${max})">Guardar</button>
+              <button class="btn" type="button" onclick="showEvalHistory(${eviId}, ${idInst})">Historial</button>
             </div>
             <div class="eval-meta" id="meta_${idInst}" style="margin-top:6px;">
               ${it.actualizado_en ? `Última actualización: ${escapeHtml(it.actualizado_en)}` : (it.calificado_en ? `Creado: ${escapeHtml(it.calificado_en)}` : 'Sin calificación')}
             </div>
           `;
           if (!it.puede_evaluar) box.querySelectorAll('input, select, button').forEach(el => el.disabled = true);
+          const versionSelect=box.querySelector('#version_'+idInst);
+          versionSelect.addEventListener('change',()=>{
+            if (Number(versionSelect.value)>0) {
+              const result=document.getElementById('res_'+idInst); if(result) result.value='';
+              const comment=document.getElementById('com_'+idInst); if(comment) comment.value='';
+            }
+          });
           frag.appendChild(box);
         });
         wrap.innerHTML = ''; wrap.appendChild(frag);
@@ -199,12 +215,11 @@
     let valor = $res ? $res.value.trim() : '';
     let comentario = $com ? $com.value.trim() : '';
 
-    if (valor === '') { if (window.Swal){ Swal.fire({icon:'warning',title:'Dato requerido',text:'Asigna un resultado.'}); } return; }
-    if (esNum) {
+    if (valor !== '' && esNum) {
       const num = parseFloat(valor);
       if (isNaN(num) || num < min || num > max) { if (window.Swal){ Swal.fire({icon:'warning',title:'Rango inválido',text:`Debe ser entre ${min} y ${max}.`}); } return; }
       valor = num;
-    } else {
+    } else if (valor !== '') {
       if (valor !== '0' && valor !== '1') { if (window.Swal){ Swal.fire({icon:'warning',title:'Valor inválido',text:'Usa 1 (aprobado) o 0 (no aprobado).'}); } return; }
       valor = parseInt(valor,10);
     }
@@ -212,8 +227,13 @@
     const fd = new FormData();
     fd.append('id_evidencia',  eviId);
     fd.append('id_instrumento',instId);
-    fd.append('resultado',     valor);
+    const idVersion=Number(document.getElementById('version_'+instId)?.value||0);
+    if(idVersion>0) fd.append('id_version',idVersion);
+    if (valor !== '') fd.append('resultado', valor);
     fd.append('comentario',    comentario);
+    const estadoCodigo = document.getElementById('estado_'+instId).value;
+    fd.append('codigo_estado', estadoCodigo);
+    fd.append('motivo', document.getElementById('motivo_'+instId).value.trim());
 
     fetch('<?= BASE_URL ?>/controllers/evaluador/evaluacion-save.php', {method:'POST', body:fd})
       .then(r=>r.json())
@@ -227,6 +247,15 @@
         }
       })
       .catch(()=>{ if (window.Swal) Swal.fire({icon:'error', title:'Error', text:'No se pudo guardar la calificación.'}); });
+  };
+
+  window.showEvalHistory = function(eviId, instId){
+    fetch('<?= BASE_URL ?>/controllers/evaluador/evaluacion-historial.php?id_evidencia='+encodeURIComponent(eviId)+'&id_instrumento='+encodeURIComponent(instId))
+      .then(r=>r.json()).then(j=>{
+        if (!j || j.status!=='ok') throw new Error(j?.message || 'No se pudo consultar el historial.');
+        const lines=(j.historial||[]).map(h=>`${escapeHtml(h.creado_en)} · ${escapeHtml(h.tipo_evento)} · ${escapeHtml(h.estado_nuevo||'Sin estado')} · ${escapeHtml(h.actor_nombre||'Usuario')}<br>${escapeHtml(h.comentario_nuevo||h.motivo||'')}`).join('<hr>') || 'Sin eventos.';
+        if (window.Swal) Swal.fire({title:'Historial de evaluación',html:lines,width:700});
+      }).catch(e=>{ if(window.Swal) Swal.fire({icon:'error',title:'Error',text:e.message}); });
   };
 
   /* ========= Abrir modal público ========= */

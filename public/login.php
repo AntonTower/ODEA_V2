@@ -23,13 +23,18 @@ include COMPONENTS_DIR . '/layout/header.php';
   </div>
 
   <div class="card-content">
-    <?php if (isset($_GET['err']) && $_GET['err'] == '1'): ?>
+    <?php if (isset($_GET['csrf'])): ?>
+      <div class="badge default" role="alert" style="display:block; background:red; color:white; text-align:center; margin-bottom:12px;">
+        El formulario venció o no es válido. Recarga la página e inténtalo nuevamente.
+      </div>
+    <?php elseif (isset($_GET['err']) && $_GET['err'] == '1'): ?>
       <div class="badge default" style="display:block; background: red; color: white; text-align:center; margin-bottom:12px;">
         Credenciales inválidas. Inténtalo nuevamente.
       </div>
     <?php endif; ?>
 
     <form class="space-y-4" action="acceder.php" method="POST" autocomplete="on" novalidate>
+      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
       <div class="form-group">
         <label class="label" for="email">Correo electrónico</label>
         <input class="input teacher" id="email" name="email" type="email" placeholder="profesor@universidad.edu" required>

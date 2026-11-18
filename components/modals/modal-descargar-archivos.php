@@ -1,4 +1,4 @@
-<?php if (session_status() === PHP_SESSION_NONE) { session_start(); } ?>
+<?php require_once __DIR__ . '/../../config/sesion.php'; iniciarSesionSegura(); ?>
 <!-- ===== Modal Descargar Evidencias Aprobadas ===== -->
 <div class="dialog-backdrop" id="dlgBackdropDesc"></div>
 <div class="dialog" id="dlgDescargar" role="dialog" aria-modal="true" aria-labelledby="dlgDescTitle" data-open="false">

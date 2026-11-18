@@ -1,1 +1,4 @@
-uploads
+uploads/*
+!uploads/files/
+uploads/files/*
+!uploads/files/.htaccess

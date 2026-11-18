@@ -8,6 +8,8 @@ require_once BASE_DIR . '/config/paths.php';
 require_once CONFIG_DIR . '/conexion.php';
 require_once CONFIG_DIR . '/validacion.php';
 require_once CONFIG_DIR . '/evidencias.php';
+require_once CONFIG_DIR . '/documentos.php';
+require_once CONFIG_DIR . '/procesamiento_documental.php';
 
 function jexit($ok, $msg = '', $extra = [])
 {
@@ -25,7 +27,7 @@ $tipoId = (int)($_POST['id_tipo_evidencia'] ?? 0);
 if ($id <= 0 || $titulo === '' || $tipoId <= 0) jexit(false, 'Datos incompletos.');
 if (mb_strlen($titulo) > 255) jexit(false, 'El título no puede superar 255 caracteres.');
 
-$stmt = $conn->prepare('SELECT archivo, id_docente FROM evidencias WHERE id_evidencia = ? AND ocultar = 0');
+$stmt = $conn->prepare('SELECT archivo, archivo_sha256, archivo_mime, archivo_bytes, id_docente, id_tipo_evidencia FROM evidencias WHERE id_evidencia = ? AND ocultar = 0');
 $stmt->bind_param('i', $id);
 $stmt->execute();
 $evidencia = $stmt->get_result()->fetch_assoc();
@@ -39,9 +41,16 @@ $stmt->execute();
 $tipoExiste = $stmt->get_result()->num_rows > 0;
 $stmt->close();
 if (!$tipoExiste) jexit(false, 'El tipo de evidencia seleccionado ya no existe.');
+if ((int)$evidencia['id_tipo_evidencia'] !== $tipoId) {
+    $valores = $conn->prepare('SELECT 1 FROM evidencia_valores_atributo WHERE id_evidencia=? LIMIT 1');
+    $valores->bind_param('i', $id); $valores->execute();
+    $tieneValores = $valores->get_result()->num_rows > 0; $valores->close();
+    if ($tieneValores) jexit(false, 'No se puede cambiar el tipo porque ya hay atributos capturados. Conserva el tipo o registra otra evidencia para evitar perder su correspondencia documental.');
+}
 
-$destDir = BASE_DIR . '/uploads/files';
 $archivoNuevo = basename((string)$evidencia['archivo']);
+$meta = ['sha256'=>$evidencia['archivo_sha256'], 'mime'=>$evidencia['archivo_mime'], 'bytes'=>$evidencia['archivo_bytes']];
+$coincidencias = ['mismo_docente'=>false, 'posible_coincidencia'=>false];
 $rutaArchivoNuevo = null;
 $hayArchivo = isset($_FILES['archivo']) && (int)($_FILES['archivo']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
 
@@ -51,36 +60,24 @@ if ($hayArchivo) {
         jexit(false, 'No se pudo recibir el archivo seleccionado.');
     }
 
-    $size = (int)$_FILES['archivo']['size'];
-    if ($size <= 0 || $size > 10 * 1024 * 1024) jexit(false, 'El archivo debe pesar como máximo 10 MB.');
-
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mime = $finfo ? finfo_file($finfo, $_FILES['archivo']['tmp_name']) : false;
-    if ($finfo) finfo_close($finfo);
-    $extension = strtolower(pathinfo((string)$_FILES['archivo']['name'], PATHINFO_EXTENSION));
-    $mimeExtensiones = [
-        'application/pdf' => ['pdf'],
-        'image/jpeg' => ['jpg', 'jpeg'],
-        'image/png' => ['png'],
-        'image/webp' => ['webp'],
-    ];
-    if (!$mime || !isset($mimeExtensiones[$mime]) || !in_array($extension, $mimeExtensiones[$mime], true)) {
-        jexit(false, 'Tipo de archivo no permitido. Usa PDF, JPG, PNG o WEBP.');
+    try {
+        $meta = documentoAnalizar((string)$_FILES['archivo']['tmp_name'], (string)$_FILES['archivo']['name'], (int)$_FILES['archivo']['size']);
+        $coincidencias = documentoCoincidencias($conn, $meta['sha256'], (int)$evidencia['id_docente'], $id);
+        $archivoNuevo = documentoNombreFisico($meta['extension']);
+        $rutaArchivoNuevo = documentoDestinoSeguro($archivoNuevo);
+    } catch (Throwable $error) {
+        jexit(false, $error->getMessage());
     }
-
-    if (!is_dir($destDir) && !mkdir($destDir, 0775, true) && !is_dir($destDir)) {
-        jexit(false, 'No se pudo crear la carpeta de archivos.');
-    }
-
-    $slug = trim(preg_replace('/[^a-z0-9_]+/i', '_', strtolower($titulo)), '_') ?: 'evidencia';
-    $archivoNuevo = $slug . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
-    $rutaArchivoNuevo = $destDir . '/' . $archivoNuevo;
     if (!move_uploaded_file($_FILES['archivo']['tmp_name'], $rutaArchivoNuevo)) {
         jexit(false, 'No se pudo guardar el archivo.');
     }
+    if (hash_file('sha256', $rutaArchivoNuevo) !== $meta['sha256']) {
+        @unlink($rutaArchivoNuevo);
+        jexit(false, 'La integridad del archivo cambió durante el almacenamiento.');
+    }
 }
 
-$sql = 'UPDATE evidencias SET titulo = ?, id_tipo_evidencia = ?, archivo = ? WHERE id_evidencia = ? AND ocultar = 0';
+$sql = 'UPDATE evidencias SET titulo = ?, id_tipo_evidencia = ?, archivo = ?, archivo_sha256 = ?, archivo_mime = ?, archivo_bytes = ? WHERE id_evidencia = ? AND ocultar = 0';
 if ((int)$usuario['rol'] === 4) $sql .= ' AND id_docente = ?';
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
@@ -88,9 +85,9 @@ if (!$stmt) {
     jexit(false, 'No se pudo preparar la actualización.');
 }
 if ((int)$usuario['rol'] === 4) {
-    $stmt->bind_param('sisii', $titulo, $tipoId, $archivoNuevo, $id, $userId);
+    $stmt->bind_param('sisssiii', $titulo, $tipoId, $archivoNuevo, $meta['sha256'], $meta['mime'], $meta['bytes'], $id, $userId);
 } else {
-    $stmt->bind_param('sisi', $titulo, $tipoId, $archivoNuevo, $id);
+    $stmt->bind_param('sisssii', $titulo, $tipoId, $archivoNuevo, $meta['sha256'], $meta['mime'], $meta['bytes'], $id);
 }
 
 if (!$stmt->execute()) {
@@ -101,8 +98,15 @@ if (!$stmt->execute()) {
 $stmt->close();
 
 if ($rutaArchivoNuevo && $evidencia['archivo']) {
-    $rutaAnterior = $destDir . '/' . basename((string)$evidencia['archivo']);
-    if (is_file($rutaAnterior)) @unlink($rutaAnterior);
+    $rutaAnterior = seguridadResolverArchivo((string)$evidencia['archivo']);
+    if ($rutaAnterior) @unlink($rutaAnterior);
 }
 
-jexit(true, 'Evidencia actualizada.');
+$procesamiento=$rutaArchivoNuevo
+    ? documentoProcesamientoIntentarEncolar($conn,$id,'EVIDENCIA',$id,(string)$meta['sha256'],(string)$meta['mime'],(int)$meta['bytes'])
+    : null;
+
+$warnings=[];
+if ($coincidencias['mismo_docente']) $warnings[]='Ya existe un archivo idéntico entre tus evidencias.';
+if ($coincidencias['posible_coincidencia']) $warnings[]='El archivo coincide con otro registro. No se muestran datos de otros usuarios.';
+jexit(true, 'Evidencia actualizada.', ['advertencias'=>$warnings,'procesamiento'=>$procesamiento]);

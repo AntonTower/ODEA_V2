@@ -18,8 +18,7 @@ $usuarioActual = evidenciaUsuarioActual($conn);
 $user_id = (int)$usuarioActual['id_usuario'];
 $user_role = (int)$usuarioActual['rol'];
 if ($user_id <= 0) {
-  $_SESSION = [];
-  session_destroy();
+  destruirSesionSegura();
   header('Location: ' . BASE_URL . '/public/login.php');
   exit;
 }

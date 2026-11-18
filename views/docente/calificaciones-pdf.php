@@ -8,12 +8,13 @@
  * - Codificación: FPDF clásico no maneja UTF-8 nativamente; usamos utf8_decode() / cp1252.
  */
 
-include 'validacion.php';
-include CONFIG_DIR . '/conexion.php';
+require_once __DIR__ . '/../../config/paths.php';
+require_once CONFIG_DIR . '/validacion.php';
+require_once CONFIG_DIR . '/seguridad.php';
 
 // === Ruta a FPDF (ajústala si la tiene en otro lado) ===
 if (!class_exists('FPDF')) {
-  require_once __DIR__ . '/fpdf/fpdf.php';
+  require_once BASE_DIR . '/fpdf/fpdf.php';
 }
 
 // ==================== Configurables ====================
@@ -70,6 +71,10 @@ $stI->close();
 if (!$inst) {
   http_response_code(404);
   echo "Instrumento no encontrado o inactivo."; exit;
+}
+if (!seguridadPuedeAccederInstrumento($conn, ['id_usuario'=>(int)$user_id,'rol'=>(int)$user_role], $instId)) {
+  http_response_code(403);
+  echo 'No autorizado para este instrumento.'; exit;
 }
 
 $instAbbr = $inst['abreviatura'];

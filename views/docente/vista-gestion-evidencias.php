@@ -18,10 +18,19 @@ require_once __DIR__ . '/../../config/paths.php';
 require_once CONFIG_DIR . '/conexion.php';
 require_once CONFIG_DIR . '/validacion.php';
 require_once CONFIG_DIR . '/evidencias.php';
+require_once CONFIG_DIR . '/procesamiento_documental.php';
 
 $usuarioActual = evidenciaUsuarioActual($conn);
 $user_id = (int)$usuarioActual['id_usuario'];
 $user_role = (int)$usuarioActual['rol'];
+$processingReady=documentoProcesamientoDisponible($conn);
+$processingSelect=$processingReady?',pt.id_trabajo AS procesamiento_id,pt.estado AS procesamiento_estado,pt.procesado_en AS procesamiento_fecha':",NULL AS procesamiento_id,NULL AS procesamiento_estado,NULL AS procesamiento_fecha";
+$processingJoin=$processingReady?"LEFT JOIN (
+          SELECT DISTINCT o.id_evidencia,t.id_trabajo,t.estado,t.procesado_en
+          FROM origenes_trabajo_documental o JOIN trabajos_documentales t ON t.id_trabajo=o.id_trabajo
+          WHERE t.id_trabajo=(SELECT MAX(t2.id_trabajo) FROM origenes_trabajo_documental o2
+            JOIN trabajos_documentales t2 ON t2.id_trabajo=o2.id_trabajo WHERE o2.id_evidencia=o.id_evidencia)
+        ) pt ON pt.id_evidencia=e.id_evidencia":"";
 if ($user_id <= 0 || !in_array($user_role, [1, 2, 3, 4], true)) {
   http_response_code($user_id <= 0 ? 401 : 403);
   exit('<div class="card-content"><p>No tienes permiso para consultar estas evidencias.</p></div>');
@@ -37,19 +46,23 @@ $sql = "SELECT
           t.id_tipo_evidencia, t.nombre_tipo,
           COALESCE(ta.total, 0)  AS total_attrs,
           COALESCE(vv.filled, 0) AS filled_attrs
+          $processingSelect
         FROM evidencias e
         LEFT JOIN usuarios u ON e.id_docente = u.id_usuario
         LEFT JOIN tipos_de_evidencia t ON t.id_tipo_evidencia = e.id_tipo_evidencia
         LEFT JOIN (
           SELECT id_tipo_evidencia, COUNT(*) AS total
           FROM atributos_tipo_evidencia
+          WHERE requerido = 1
           GROUP BY id_tipo_evidencia
         ) ta ON ta.id_tipo_evidencia = e.id_tipo_evidencia
         LEFT JOIN (
-          SELECT id_evidencia, COUNT(DISTINCT id_ate) AS filled
-          FROM evidencia_valores_atributo
-          GROUP BY id_evidencia
+          SELECT v.id_evidencia, COUNT(DISTINCT v.id_ate) AS filled
+          FROM evidencia_valores_atributo v
+          INNER JOIN atributos_tipo_evidencia a ON a.id_ate=v.id_ate AND a.requerido=1
+          GROUP BY v.id_evidencia
         ) vv ON vv.id_evidencia = e.id_evidencia
+        $processingJoin
         WHERE e.ocultar = 0 ";
 
 $params = [];
@@ -117,6 +130,7 @@ $result = $stmt->get_result();
         <th class="dt-orderable" data-priority="4">Archivo</th>
         <th class="dt-orderable" data-priority="4">Fecha</th>
         <th class="dt-orderable" data-priority="3">Avance</th>
+        <th data-priority="3">Procesamiento</th>
         <th data-priority="2">Acciones</th>
       </tr>
     </thead>
@@ -128,13 +142,16 @@ $result = $stmt->get_result();
           $tipoN = $row['nombre_tipo'] ?? '—';
           $docN  = trim(($row['nombre'] ?? '').' '.($row['apellidop'] ?? '').' '.($row['apellidom'] ?? ''));
           $file  = $row['archivo'] ?? '';
+          $processingState=(string)($row['procesamiento_estado']??'SIN_ENCOLAR');
+          $processingLabels=['PENDIENTE'=>'Pendiente','EN_PROCESO'=>'En proceso','PROCESADO'=>'Procesado','REQUIERE_REVISION'=>'Requiere revisión','ERROR'=>'Error','CANCELADO'=>'Cancelado','SIN_ENCOLAR'=>'Sin procesar'];
+          $processingLabel=$processingLabels[$processingState]??'Estado desconocido';
           $date  = $row['fecha_subida'] ? date('Y-m-d H:i', strtotime($row['fecha_subida'])) : '—';
 
           $totalAttrs  = (int)$row['total_attrs'];
           $filledAttrs = (int)$row['filled_attrs'];
 
           // Sintaxis corregida del porcentaje
-          $pct = ($totalAttrs > 0) ? round(($filledAttrs * 100) / $totalAttrs) : 0;
+          $pct = ($totalAttrs > 0) ? round(($filledAttrs * 100) / $totalAttrs) : 100;
           if ($pct < 0) $pct = 0; 
           if ($pct > 100) $pct = 100;
 
@@ -195,11 +212,16 @@ $result = $stmt->get_result();
           <td><span class="badge" title="<?= htmlspecialchars($row['fecha_subida'] ?? '', ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($date, ENT_QUOTES, 'UTF-8') ?></span></td>
 
           <!-- Avance -->
-          <td title="<?= $filledAttrs ?>/<?= $totalAttrs ?> atributos">
+          <td title="<?= $filledAttrs ?>/<?= $totalAttrs ?> campos obligatorios">
             <div class="progress" aria-label="Avance de captura">
               <div class="progress-bar" style="width: <?= $pct ?>%;"></div>
             </div>
             <span style="margin-left:8px; font-size:12px; color:var(--muted-foreground,#555);"><?= $pct ?>%</span>
+          </td>
+
+          <td>
+            <span class="badge" title="<?= htmlspecialchars((string)($row['procesamiento_fecha']??''),ENT_QUOTES,'UTF-8') ?>"><?= htmlspecialchars($processingLabel,ENT_QUOTES,'UTF-8') ?></span>
+            <button class="btn" type="button" title="Consultar procesamiento" data-evidence-action="processing" data-id="<?= $id ?>">Detalles</button>
           </td>
 
           <td style="display:flex; gap:8px;">

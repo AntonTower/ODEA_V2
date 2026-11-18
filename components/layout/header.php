@@ -5,9 +5,8 @@
 // - En desktop: perfil compacto (solo avatar) + botón de tema + cerrar sesión en el dropdown.
 // - En móvil: hamburguesa para abrir el left-menu + avatar con dropdown (perfil, tema, cerrar sesión).
 
-if (session_status() === PHP_SESSION_NONE) {
-  session_start();
-}
+require_once __DIR__ . '/../../config/csrf.php';
+iniciarSesionSegura();
 
 if (!defined('BASE_DIR')) {
   define('BASE_DIR', realpath(__DIR__ . '/../..'));
@@ -57,9 +56,35 @@ $emailUser = $_SESSION['EMAIL'] ?? '';
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
   <title>ODEA - Plataforma Académica</title>
   <link rel="stylesheet" href="<?= BASE_URL ?>/styles/global.css">
   <link rel="shortcut icon" href="<?= BASE_URL ?>/assets/icons/favicon.ico">
+  <script>
+  (function(){
+    const originalFetch = window.fetch.bind(window);
+    const csrfMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+    window.fetch = function(input, init){
+      const options = init ? { ...init } : {};
+      const requestMethod = options.method || (input instanceof Request ? input.method : 'GET');
+      const method = String(requestMethod).toUpperCase();
+      if (csrfMethods.has(method)) {
+        try {
+          const url = new URL(input instanceof Request ? input.url : input, window.location.href);
+          if (url.origin === window.location.origin) {
+            const headers = new Headers(options.headers || (input instanceof Request ? input.headers : undefined));
+            if (!headers.has('X-CSRF-Token')) {
+              const meta = document.querySelector('meta[name="csrf-token"]');
+              if (meta) headers.set('X-CSRF-Token', meta.content);
+            }
+            options.headers = headers;
+          }
+        } catch (_) {}
+      }
+      return originalFetch(input, options);
+    };
+  })();
+  </script>
 </head>
 <body class="page <?= htmlspecialchars($bodyClass) ?>">
   <header class="app-header">
@@ -135,14 +160,17 @@ $emailUser = $_SESSION['EMAIL'] ?? '';
 
               <div class="dropdown-sep"></div>
 
-              <a class="dropdown-item text-danger" href="<?= BASE_URL ?>/public/logout.php">
+              <form method="POST" action="<?= BASE_URL ?>/public/logout.php" class="logout-form" style="margin:0">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
+                <button class="dropdown-item text-danger" type="submit">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                   <path d="M16 17l5-5-5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                   <path d="M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                 </svg>
                 <span>Cerrar Sesión</span>
-              </a>
+                </button>
+              </form>
             </div>
           </div>
         <?php endif; ?>

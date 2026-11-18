@@ -119,6 +119,8 @@ if ($resT = mysqli_query($conn, $qT)) {
         if (d && d.status === 'ok') {
           if (typeof window.closeEditEviModal === 'function') window.closeEditEviModal();
           if (typeof loadTableE === 'function') loadTableE();
+          const warnings = Array.isArray(d.advertencias) ? d.advertencias : [];
+          if (warnings.length && window.Swal) { Swal.fire({icon:'warning', title:'Actualizada con advertencia', text:warnings.join(' ')}); return; }
           if (window.Swal) Swal.fire({icon:'success', title:'Actualizada', text:'Evidencia actualizada.'});
         } else {
           const msg = (d && d.message) ? d.message : 'No se pudo actualizar.';

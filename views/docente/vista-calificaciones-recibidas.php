@@ -43,12 +43,14 @@ $sqlE = "SELECT
          LEFT JOIN (
            SELECT id_tipo_evidencia, COUNT(*) AS total
            FROM atributos_tipo_evidencia
+           WHERE requerido = 1
            GROUP BY id_tipo_evidencia
          ) ta ON ta.id_tipo_evidencia = e.id_tipo_evidencia
          LEFT JOIN (
-           SELECT id_evidencia, COUNT(DISTINCT id_ate) AS filled
-           FROM evidencia_valores_atributo
-           GROUP BY id_evidencia
+           SELECT v.id_evidencia, COUNT(DISTINCT v.id_ate) AS filled
+           FROM evidencia_valores_atributo v
+           INNER JOIN atributos_tipo_evidencia a ON a.id_ate=v.id_ate AND a.requerido=1
+           GROUP BY v.id_evidencia
          ) vv ON vv.id_evidencia = e.id_evidencia
          WHERE e.ocultar = 0";
 
@@ -113,13 +115,17 @@ if (!empty($ids)) {
               e.id_evidencia,
               i.id_instrumento, i.abreviatura, i.nombre_completo,
               i.tipo_calificacion, COALESCE(i.min_calificacion,0) AS min_cal, COALESCE(i.max_calificacion,10) AS max_cal,
-              ce.resultado, ce.comentario, ce.calificado_en
+              COALESCE(ev.resultado,ce.resultado) AS resultado, COALESCE(ev.comentario,ce.comentario) AS comentario,
+              ce.calificado_en, ev.id_estado, ee.nombre AS estado_nombre, ev.id_version
             FROM evidencias e
             JOIN instrumento_tipo_evidencia ite ON ite.id_tipo_evidencia = e.id_tipo_evidencia
             JOIN instrumentos i ON i.id_instrumento = ite.id_instrumento AND i.activo = 1
             LEFT JOIN calificacion_evidencia ce
                   ON ce.id_evidencia = e.id_evidencia
                  AND ce.id_instrumento = i.id_instrumento
+            LEFT JOIN evaluaciones_versionadas ev
+                  ON ev.id_evidencia=e.id_evidencia AND ev.id_instrumento=i.id_instrumento AND ev.id_version IS NULL
+            LEFT JOIN estados_evaluacion ee ON ee.id_estado=ev.id_estado
             WHERE e.id_evidencia IN ($placeholders)";
 
   if ($instFilter > 0) {
@@ -154,11 +160,11 @@ if (!empty($ids)) {
     $filledAttrs = (int)$row['filled_attrs'];
     
     // Sintaxis corregida para el cálculo de porcentaje
-    $pct = ($totalAttrs > 0) ? round(($filledAttrs * 100) / $totalAttrs) : 0;
+    $pct = ($totalAttrs > 0) ? round(($filledAttrs * 100) / $totalAttrs) : 100;
     if ($pct < 0) $pct = 0; 
     if ($pct > 100) $pct = 100;
 
-    $href = $file ? (BASE_URL . '/uploads/files/' . rawurlencode($file)) : '';
+    $href = $file ? (BASE_URL . '/controllers/docente/evidencia-archivo.php?id=' . $id . '&descargar=1') : '';
 
     $btnDownload = $file ? '
       <a class="btn" href="'.$href.'" download="'.htmlspecialchars($file).'" title="Descargar archivo">
@@ -229,9 +235,10 @@ if (!empty($ids)) {
         }
       }
 
-      $click = $hasRes ? 'onclick="openVerCalificacion('.$id.','.$iid.')"' : '';
+      $estadoRevision = (string)($inst['estado_nombre'] ?? '');
+      $click = ($hasRes || $estadoRevision!=='') ? 'onclick="openVerCalificacion('.$id.','.$iid.')"' : '';
       $badges[] = '<span class="badge clickable '.$cls.'" '.$click.' title="Instrumento: '.htmlspecialchars($abbr).'">'.
-                  htmlspecialchars($abbr).': '.htmlspecialchars($label).'</span>';
+                  htmlspecialchars($abbr).': '.htmlspecialchars($label).($estadoRevision!==''?' · '.htmlspecialchars($estadoRevision):'').'</span>';
     }
 
     $btnDetalles = '
@@ -251,7 +258,7 @@ if (!empty($ids)) {
     echo '<td>'. $btnDownload .'</td>';
     echo '<td><span class="badge" title="'.htmlspecialchars($row['fecha_subida'] ?? '').'">'. htmlspecialchars($date) .'</span></td>';
 
-    echo '<td title="'.$filledAttrs.'/'.$totalAttrs.' atributos">';
+    echo '<td title="'.$filledAttrs.'/'.$totalAttrs.' campos obligatorios">';
     echo '  <div class="progress"><div class="progress-bar" style="width: '.$pct.'%;"></div></div>';
     echo '  <span style="margin-left:8px; font-size:12px; color:var(--muted-foreground,#555);">'.$pct.'%</span>';
     echo '</td>';

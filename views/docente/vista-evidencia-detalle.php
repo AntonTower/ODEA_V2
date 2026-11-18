@@ -125,7 +125,7 @@ foreach ($values as $list) { if (!empty($list)) { $hasAnyValue = true; break; } 
                 foreach ($list as $v) {
                   $fn = $v['valor_archivo'];
                   if ($fn) {
-                    $href = BASE_URL . '/controllers/docente/evidencia-archivo.php?id=' . (int)$id . '&descargar=1';
+                    $href = BASE_URL . '/controllers/docente/evidencia-archivo.php?id=' . (int)$id . '&valor_archivo_id=' . (int)$v['id_eva'] . '&descargar=1';
                     echo '<a class="btn" href="'.htmlspecialchars($href, ENT_QUOTES, 'UTF-8').'">Descargar</a>';
                   }
                 }

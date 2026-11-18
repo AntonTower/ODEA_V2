@@ -10,6 +10,12 @@ $MENU_CONFIG = [
         'roles' => [1, 2, 3, 4]
     ],
     [
+        'titulo' => 'Expediente Académico',
+        'ruta' => 'views/docente/expediente.php',
+        'icono' => '<path d="M6 3h9l4 4v14H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v5h5M8 12h8M8 16h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+        'roles' => [1, 2, 4]
+    ],
+    [
         'titulo' => 'Usuarios',
         'ruta' => 'views/admin/gestion-usuarios.php',
         'icono' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M22 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',

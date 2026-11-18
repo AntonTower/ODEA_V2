@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="csrf-token" content="07138e5f957fff377c8e02ce2988be9a1c7b2dbc4f5991d47be532e6afa5eab6">
+  <title>ODEA - Plataforma Académica</title>
+  <link rel="stylesheet" href="file:///C:/xampp/htdocs/ODEA/gestor_evidencias/styles/global.css">
+  <link rel="shortcut icon" href="/assets/icons/favicon.ico">
+  <script>
+  (function(){
+    const originalFetch = window.fetch.bind(window);
+    const csrfMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+    window.fetch = function(input, init){
+      const options = init ? { ...init } : {};
+      const requestMethod = options.method || (input instanceof Request ? input.method : 'GET');
+      const method = String(requestMethod).toUpperCase();
+      if (csrfMethods.has(method)) {
+        try {
+          const url = new URL(input instanceof Request ? input.url : input, window.location.href);
+          if (url.origin === window.location.origin) {
+            const headers = new Headers(options.headers || (input instanceof Request ? input.headers : undefined));
+            if (!headers.has('X-CSRF-Token')) {
+              const meta = document.querySelector('meta[name="csrf-token"]');
+              if (meta) headers.set('X-CSRF-Token', meta.content);
+            }
+            options.headers = headers;
+          }
+        } catch (_) {}
+      }
+      return originalFetch(input, options);
+    };
+  })();
+  </script>
+</head>
+<body class="page teacher-theme teacher-gradient-bg">
+  <header class="app-header">
+    <div class="header-inner container header-bar">
+      <!-- IZQUIERDA: Botón hamburguesa (móvil) + Marca -->
+      <div class="header-left">
+                  <button id="headerHamburger" class="btn-icon only-mobile" type="button" aria-label="Abrir menú">
+            <!-- Hamburguesa -->
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>
+        
+        <div class="brand">
+          <div class="brand-box" aria-hidden="true" title="Plataforma Académica">
+            <!-- Birrete -->
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M22 10L12 5 2 10l10 5 10-5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M6 12v4c2 1.5 4 2 6 2s4-.5 6-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h1 class="brand-title" title="Plataforma Académica">ODEA</h1>
+            <p class="brand-subtitle">Panel de Evaluador</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- DERECHA: Tema (desktop) + Avatar con dropdown -->
+      <div class="header-right">
+        <!-- Botón de tema visible en desktop -->
+        <button id="themeToggle" class="btn hide-on-mobile" type="button" aria-pressed="false">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="btn-text">Oscuro</span>
+        </button>
+
+                  <!-- Dropdown de usuario (desktop y móvil) -->
+          <div class=" dropdown dropdown-right">
+            <button id="profileBtn" class="avatar avatar-button" aria-haspopup="menu" aria-expanded="false" aria-controls="profileMenu">
+              AE            </button>
+            <div id="profileMenu" class="dropdown-menu dropdown-right" role="menu" aria-labelledby="profileBtn">
+              <div class="dropdown-header">
+                <div class="avatar" aria-hidden="true">AE</div>
+                <div class="profile-text">
+                  <p class="profile-name">Alex Ejemplo</p>
+                  <p class="profile-email">demo@example.invalid</p>
+                </div>
+              </div>
+
+              <div class="dropdown-sep"></div>
+
+              <!-- Toggle tema (también disponible dentro del menú; útil en móvil) -->
+              <button id="themeToggleInMenu" class="dropdown-item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Cambiar tema</span>
+              </button>
+
+              <a class="dropdown-item" href="/views/comunes/perfil.php">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Z" stroke="currentColor" stroke-width="1.8"/>
+                  <path d="M3 21a9 9 0 0 1 18 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                <span>Mi Perfil</span>
+              </a>
+
+              <div class="dropdown-sep"></div>
+
+              <form method="POST" action="/public/logout.php" class="logout-form" style="margin:0">
+                <input type="hidden" name="csrf_token" value="07138e5f957fff377c8e02ce2988be9a1c7b2dbc4f5991d47be532e6afa5eab6">
+                <button class="dropdown-item text-danger" type="submit">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                  <path d="M16 17l5-5-5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                <span>Cerrar Sesión</span>
+                </button>
+              </form>
+            </div>
+          </div>
+              </div>
+    </div>
+  </header>
+
+  <main class="container">
+<script>
+// ===== Modo oscuro persistente =====
+(function(){
+  const htmlEl = document.documentElement;
+  const saved = localStorage.getItem('darkMode');
+  let isDark = false;
+  if (saved !== null) { try { isDark = JSON.parse(saved); } catch(e){} }
+
+  function renderToggle(btn, enabled){
+    if (!btn) return;
+    btn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    if (btn.id === 'themeToggle') {
+      btn.innerHTML = enabled
+        ? `<svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+             <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/>
+             <path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+           </svg><span class="btn-text">Claro</span>`
+        : `<svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+           </svg><span class="btn-text">Oscuro</span>`;
+    }
+  }
+  function setDark(enabled){
+    htmlEl.classList.toggle('dark', enabled);
+    localStorage.setItem('darkMode', JSON.stringify(enabled));
+    renderToggle(document.getElementById('themeToggle'), enabled);
+  }
+
+  // Init
+  setDark(isDark);
+
+  addEventListener('DOMContentLoaded', function(){
+    const deskBtn = document.getElementById('themeToggle');
+    const menuBtn = document.getElementById('themeToggleInMenu');
+
+    if (deskBtn) deskBtn.addEventListener('click', function(){
+      setDark(!document.documentElement.classList.contains('dark'));
+    });
+    if (menuBtn) menuBtn.addEventListener('click', function(){
+      setDark(!document.documentElement.classList.contains('dark'));
+      closeProfileMenu();
+    });
+  });
+})();
+
+// ===== Dropdown perfil (desktop/móvil) =====
+(function(){
+  const btn  = document.getElementById('profileBtn');
+  const menu = document.getElementById('profileMenu');
+  if (!btn || !menu) return;
+
+  function toggleMenu(){
+    const expanded = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+    menu.classList.toggle('open', !expanded);
+  }
+  function closeOnOutside(e){
+    if (!menu.classList.contains('open')) return;
+    if (!menu.contains(e.target) && e.target !== btn) {
+      btn.setAttribute('aria-expanded', 'false');
+      menu.classList.remove('open');
+    }
+  }
+  function closeOnEsc(e){
+    if (e.key === 'Escape' && menu.classList.contains('open')) {
+      btn.setAttribute('aria-expanded', 'false');
+      menu.classList.remove('open');
+    }
+  }
+  btn.addEventListener('click', toggleMenu);
+  document.addEventListener('click', closeOnOutside);
+  document.addEventListener('keydown', closeOnEsc);
+
+  // Exponer utilitario global
+  window.closeProfileMenu = function(){
+    btn.setAttribute('aria-expanded', 'false');
+    menu.classList.remove('open');
+  };
+})();
+
+// La hamburguesa se conecta en left-menu.php para compartir estado y breakpoint.
+</script>
+<aside class="sidebar" id="appSidebar" aria-label="Menú principal">
+  <div class="sidebar-header">
+    <div class="brand-mini" aria-hidden="true">
+      <svg class="icon" viewBox="0 0 24 24" fill="none">
+        <path d="M22 10L12 5 2 10l10 5 10-5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M6 12v4c2 1.5 4 2 6 2s4-.5 6-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <span class="brand-title">ODEA</span>
+    <button id="sidebarCollapseBtn" class="collapse-btn" type="button" title="Contraer menú" aria-label="Contraer menú" aria-expanded="true">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:16px;height:16px">
+        <path d="M11 19l-7-7 7-7M20 19l-7-7 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="sidebar-scroll">
+    <nav class="menu" id="sidebarMenu">
+      <div class="menu-section">Navegación</div>
+                                    <a class="menu-item is-active" href="/views/comunes/index.php" title="Resumen" aria-current="page">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 21V10l9-7 9 7v11" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21v-6h6v6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>              </svg>
+              <span class="label">Resumen</span>
+            </a>
+                                                                                              <a class="menu-item" href="/views/docente/gestion-evidencias.php" title="Evidencias">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2 7a4 4 0 0 1 4-4h6v18H6a4 4 0 0 0-4 4V7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M22 7a4 4 0 0 0-4-4h-6v18h6a4 4 0 0 1 4 4V7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>              </svg>
+              <span class="label">Evidencias</span>
+            </a>
+                                                          <a class="menu-item" href="/views/evaluador/evaluacion.php" title="Evaluación">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M9 5h6a2 2 0 0 1 2 2v2H7V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8"/><rect x="7" y="9" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 14l1.5 1.5L14.5 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>              </svg>
+              <span class="label">Evaluación</span>
+            </a>
+                                                          <a class="menu-item" href="/views/comunes/perfil.php" title="Perfil">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" stroke-width="1.8"/><path d="M6.5 18c1.6-2.3 4-3.5 5.5-3.5S15.9 15.7 17.5 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>              </svg>
+              <span class="label">Perfil</span>
+            </a>
+                            </nav>
+  </div>
+</aside>
+<button class="sidebar-backdrop" id="sidebarBackdrop" type="button" aria-label="Cerrar menú"></button>
+
+<script>
+(function () {
+  const body = document.body;
+  const sidebar = document.getElementById('appSidebar');
+  const collapseButton = document.getElementById('sidebarCollapseBtn');
+  const hamburger = document.getElementById('headerHamburger');
+  const backdrop = document.getElementById('sidebarBackdrop');
+  if (!body || !sidebar) return;
+
+  const desktop = window.matchMedia('(min-width: 1024px)');
+  let collapsed = false;
+  try { collapsed = localStorage.getItem('odeaSidebarCollapsed') === 'true'; } catch (e) {}
+
+  function render() {
+    body.classList.add('has-sidebar');
+    body.classList.toggle('sidebar-collapsed', desktop.matches && collapsed);
+    body.classList.toggle('sidebar-expanded', desktop.matches && !collapsed);
+    if (collapseButton) {
+      collapseButton.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      collapseButton.setAttribute('title', collapsed ? 'Expandir menú' : 'Contraer menú');
+      collapseButton.setAttribute('aria-label', collapsed ? 'Expandir menú' : 'Contraer menú');
+    }
+    if (hamburger) hamburger.setAttribute('aria-expanded', body.classList.contains('sidebar-open') ? 'true' : 'false');
+  }
+  function closeMobile() { body.classList.remove('sidebar-open'); render(); }
+
+  render();
+  if (collapseButton) collapseButton.addEventListener('click', function () {
+    collapsed = !collapsed;
+    try { localStorage.setItem('odeaSidebarCollapsed', String(collapsed)); } catch (e) {}
+    render();
+  });
+  if (hamburger) hamburger.addEventListener('click', function () {
+    body.classList.toggle('sidebar-open');
+    render();
+  });
+  if (backdrop) backdrop.addEventListener('click', closeMobile);
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') closeMobile();
+  });
+  if (desktop.addEventListener) desktop.addEventListener('change', closeMobile);
+  else if (desktop.addListener) desktop.addListener(closeMobile);
+})();
+</script>
+<section class="space-y-6">
+  <header class="dashboard-hero"><div><p class="dashboard-eyebrow">Evaluación</p><h1 class="text-2xl font-semibold">Panel del evaluador</h1><p class="text-muted-foreground">Carga y actividad limitadas a tus instrumentos asignados.</p></div><a class="btn btn-primary" href="/views/evaluador/evaluacion.php">Abrir evaluación</a></header>
+  <div class="dashboard-kpis">
+    <article class="card dashboard-kpi"><div class="card-content"><span class="dashboard-kpi-label">Revisiones pendientes</span><strong class="dashboard-kpi-value">3</strong><span class="dashboard-kpi-hint">Por evidencia e instrumento</span></div></article>    <article class="card dashboard-kpi"><div class="card-content"><span class="dashboard-kpi-label">Revisiones realizadas</span><strong class="dashboard-kpi-value">0</strong><span class="dashboard-kpi-hint">Por evidencia e instrumento</span></div></article>    <article class="card dashboard-kpi"><div class="card-content"><span class="dashboard-kpi-label">Revisiones observadas</span><strong class="dashboard-kpi-value">0</strong><span class="dashboard-kpi-hint">Por evidencia e instrumento</span></div></article>    <article class="card dashboard-kpi"><div class="card-content"><span class="dashboard-kpi-label">Instrumentos autorizados</span><strong class="dashboard-kpi-value">1</strong></div></article>  </div>
+  <section class="card"><div class="card-content"><h2 class="text-lg font-semibold">Mis asignaciones</h2>
+    <div class="dashboard-instrument-grid">
+      <article class="card"><div class="card-content"><p class="dashboard-eyebrow">SNII</p><h3 class="font-semibold">Sistema Nacional de Investigadores e Investigadoras</h3><div class="dashboard-status-row"><span>Pendientes</span><b>3</b></div><div class="dashboard-status-row"><span>Revisadas</span><b>0</b></div><div class="dashboard-status-row"><span>Observadas</span><b>0</b></div></div></article>    </div>  </div></section>
+  <section class="card"><div class="card-content"><div class="dashboard-section-heading"><div><h2 class="text-lg font-semibold">Bandeja de evidencias</h2><p class="text-muted-foreground">Busca dentro de las evidencias vinculadas a tus instrumentos.</p></div></div>
+    <form class="dashboard-filters" method="get" action="/views/comunes/index.php">
+      <label>Buscar<input class="input" name="q" value="" placeholder="Título o tipo documental"></label>
+      <label>Instrumento<select class="input" name="instrumento"><option value="0">Todos mis instrumentos</option><option value="1" >SNII</option></select></label>
+      <label>Estado<select class="input" name="estado"><option value="todas" selected>Todos</option><option value="pendiente" >Pendiente</option><option value="revisada" >Revisada</option><option value="observada" >Observada</option><option value="aceptada" >Aceptada</option><option value="rechazada" >Rechazada</option></select></label>
+      <button class="btn btn-primary" type="submit">Filtrar</button><a class="btn" href="/views/comunes/index.php">Limpiar</a>
+    </form>
+    <div class="dashboard-table-wrap"><table class="table dashboard-table"><thead><tr><th>Evidencia</th><th>Tipo</th><th>Docente</th><th>Instrumento</th><th>Estado</th><th></th></tr></thead><tbody>
+      <tr><td>EVIDENCIA_PROPIA_DE_TABLERO</td><td>TEST SNII</td><td>Alex Ejemplo Docente</td><td>SNII</td><td><span class="badge">Pendiente</span></td><td><a class="btn" href="/views/evaluador/evaluacion.php">Abrir bandeja</a></td></tr><tr><td>Evidencia Prueba 2</td><td>TEST SNII</td><td>Alex Ejemplo Docente</td><td>SNII</td><td><span class="badge">Pendiente</span></td><td><a class="btn" href="/views/evaluador/evaluacion.php">Abrir bandeja</a></td></tr><tr><td>Prueba de Docente Evidencia</td><td>TEST SNII</td><td>Alex Ejemplo Docente</td><td>SNII</td><td><span class="badge">Pendiente</span></td><td><a class="btn" href="/views/evaluador/evaluacion.php">Abrir bandeja</a></td></tr>    </tbody></table></div>  </div></section>
+  <section class="card"><div class="card-content"><h2 class="text-lg font-semibold">Historial de revisiones</h2>
+    <div class="dashboard-empty">No hay revisiones registradas en tus asignaciones.</div>  </div></section>
+</section>
+  </main>
+</body>
+</html>

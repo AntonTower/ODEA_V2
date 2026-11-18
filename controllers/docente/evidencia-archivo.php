@@ -4,8 +4,10 @@ if (!defined('BASE_DIR')) define('BASE_DIR', realpath(__DIR__ . '/../..'));
 require_once BASE_DIR . '/config/paths.php';
 require_once CONFIG_DIR . '/conexion.php';
 require_once CONFIG_DIR . '/evidencias.php';
+require_once CONFIG_DIR . '/seguridad.php';
 $usuario = evidenciaUsuarioActual($conn);
 $id = (int)($_GET['id'] ?? 0);
+$valorArchivoId = (int)($_GET['valor_archivo_id'] ?? 0);
 $rol = (int)$usuario['rol'];
 header('Cache-Control: private, no-store');
 header('X-Content-Type-Options: nosniff');
@@ -18,17 +20,19 @@ function archivoError(int $estado, string $mensaje): void {
 }
 if (!$usuario['id_usuario']) archivoError(401, 'Inicia sesión para consultar el documento.');
 if ($id <= 0) archivoError(400, 'Evidencia inválida.');
-$st = $conn->prepare('SELECT e.archivo, e.titulo, e.id_docente, e.id_tipo_evidencia FROM evidencias e WHERE e.id_evidencia = ? AND e.ocultar = 0');
-$st->bind_param('i', $id);
+$sqlArchivo = $valorArchivoId > 0
+    ? 'SELECT v.valor_archivo AS archivo, e.titulo, e.id_docente, e.id_tipo_evidencia FROM evidencia_valores_atributo v JOIN evidencias e ON e.id_evidencia=v.id_evidencia WHERE v.id_eva=? AND e.id_evidencia=? AND e.ocultar=0 AND v.valor_archivo IS NOT NULL AND v.valor_archivo<>\'\''
+    : 'SELECT e.archivo, e.titulo, e.id_docente, e.id_tipo_evidencia FROM evidencias e WHERE e.id_evidencia = ? AND e.ocultar = 0';
+$st = $conn->prepare($sqlArchivo);
+if ($valorArchivoId > 0) $st->bind_param('ii', $valorArchivoId, $id);
+else $st->bind_param('i', $id);
 $st->execute();
 $evidencia = $st->get_result()->fetch_assoc();
 if (!$evidencia) archivoError(404, 'La evidencia no está disponible.');
 if (!evidenciaPuedeVer($conn, $usuario, $evidencia)) archivoError(403, 'No tienes acceso al documento de esta evidencia.');
 $nombreArchivo = (string)$evidencia['archivo'];
-$raiz = realpath(BASE_DIR . '/uploads/files');
-$ruta = $raiz ? realpath($raiz.DIRECTORY_SEPARATOR.$nombreArchivo) : false;
-if (!$nombreArchivo || !$ruta || !is_file($ruta) || !is_readable($ruta)
-    || strncmp($ruta, $raiz.DIRECTORY_SEPARATOR, strlen($raiz)+1) !== 0) {
+$ruta = seguridadResolverArchivo($nombreArchivo);
+if (!$ruta) {
     archivoError(404, 'El archivo no está disponible. Solicita que se vuelva a cargar.');
 }
 $mime = (new finfo(FILEINFO_MIME_TYPE))->file($ruta);

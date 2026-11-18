@@ -8,6 +8,8 @@ require_once BASE_DIR . '/config/paths.php';
 require_once CONFIG_DIR . '/conexion.php';
 require_once CONFIG_DIR . '/validacion.php';
 require_once CONFIG_DIR . '/evidencias.php';
+require_once CONFIG_DIR . '/documentos.php';
+require_once CONFIG_DIR . '/procesamiento_documental.php';
 
 function jexit($ok, $msg = '', $extra = []) {
   echo json_encode(array_merge(['status' => $ok ? 'ok' : 'error', 'message' => $msg], $extra));
@@ -67,55 +69,38 @@ if (empty($archivoSubido['tmp_name']) || !is_uploaded_file($archivoSubido['tmp_n
   jexit(false, 'El archivo no se recibió correctamente. Intenta seleccionarlo otra vez.');
 }
 
-// Validaciones de archivo
-$maxSize = 10 * 1024 * 1024; // 10MB
-$allowedFiles = [
-  'application/pdf' => ['pdf'],
-  'image/jpeg' => ['jpg', 'jpeg'],
-  'image/png' => ['png'],
-  'image/webp' => ['webp'],
-];
-
-$size = (int)$archivoSubido['size'];
-if ($size <= 0 || $size > $maxSize) jexit(false, 'Archivo demasiado grande (máx. 10 MB).');
-
-$finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : false;
-$mime  = $finfo ? finfo_file($finfo, $archivoSubido['tmp_name']) : false;
-if ($finfo) finfo_close($finfo);
-
-$ext = strtolower(pathinfo($archivoSubido['name'] ?? '', PATHINFO_EXTENSION));
-if (!$mime || !isset($allowedFiles[$mime]) || !in_array($ext, $allowedFiles[$mime], true)) {
-  jexit(false, 'Tipo de archivo no permitido. Usa PDF o imagen (JPG/PNG/WEBP).');
-}
-
-// Generar nombre de archivo limpio
-$slug = preg_replace('/[^a-z0-9_]+/i', '_', strtolower($titulo));
-$slug = trim($slug, '_');
-if ($slug === '') $slug = 'evidencia';
-$slug = substr($slug, 0, 80);
-$filename = $slug.'_'.date('Ymd_His').'_'.bin2hex(random_bytes(4)).'.'.$ext;
-
-$destDir = BASE_DIR . '/uploads/files';
-$destPath = $destDir . '/' . $filename;
-if (!is_dir($destDir) && !mkdir($destDir, 0775, true) && !is_dir($destDir)) {
-  jexit(false, 'No se pudo crear la carpeta de archivos.');
+try {
+  $meta = documentoAnalizar((string)$archivoSubido['tmp_name'], (string)($archivoSubido['name'] ?? ''), (int)($archivoSubido['size'] ?? 0));
+  $coincidencias = documentoCoincidencias($conn, $meta['sha256'], $docenteId);
+  $filename = documentoNombreFisico($meta['extension']);
+  $destPath = documentoDestinoSeguro($filename);
+} catch (Throwable $error) {
+  jexit(false, $error->getMessage());
 }
 if (!move_uploaded_file($archivoSubido['tmp_name'], $destPath)) {
   jexit(false, 'No se pudo guardar el archivo en el servidor.');
 }
+if (hash_file('sha256', $destPath) !== $meta['sha256']) {
+  @unlink($destPath);
+  jexit(false, 'La integridad del archivo cambió durante el almacenamiento.');
+}
 
 // Insert
 try {
-$sql = "INSERT INTO evidencias (titulo, archivo, id_docente, id_tipo_evidencia, ocultar)
-        VALUES (?, ?, ?, ?, 0)";
+$sql = "INSERT INTO evidencias (titulo, archivo, archivo_sha256, archivo_mime, archivo_bytes, id_docente, id_tipo_evidencia, ocultar)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0)";
 $stmt = $conn->prepare($sql);
 if (!$stmt) jexit(false, 'Error de preparación: '.$conn->error);
-$stmt->bind_param('ssii', $titulo, $filename, $docenteId, $id_tipo);
+$stmt->bind_param('ssssiii', $titulo, $filename, $meta['sha256'], $meta['mime'], $meta['bytes'], $docenteId, $id_tipo);
 
 if ($stmt->execute()) {
   $newId = $stmt->insert_id;
   $stmt->close();
-  jexit(true, 'Evidencia creada.', ['id'=>$newId, 'archivo'=>$filename]);
+  $procesamiento=documentoProcesamientoIntentarEncolar($conn,$newId,'EVIDENCIA',$newId,$meta['sha256'],$meta['mime'],$meta['bytes']);
+  $warnings=[];
+  if ($coincidencias['mismo_docente']) $warnings[]='Ya existe un archivo idéntico entre tus evidencias.';
+  if ($coincidencias['posible_coincidencia']) $warnings[]='El archivo coincide con otro registro. No se muestran datos de otros usuarios.';
+  jexit(true, 'Evidencia creada.', ['id'=>$newId, 'archivo'=>$filename, 'sha256'=>$meta['sha256'], 'advertencias'=>$warnings,'procesamiento'=>$procesamiento]);
 } else {
   $err = $stmt->error ?: $conn->error;
   $stmt->close();

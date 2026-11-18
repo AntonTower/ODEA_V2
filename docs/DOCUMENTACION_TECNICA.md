@@ -513,7 +513,7 @@ Para despliegue en produccion se recomienda:
 ## Asignaciones por instrumento (2026-10-07)
 
 La instalacion y la base de datos vigente se describen en [sql/README_produccion.md](../sql/README_produccion.md).
-El SQL original queda como respaldo; la aplicacion utiliza la nueva base independiente.
+El volcado v2 es la referencia vigente para instalaciones nuevas; los volcados anteriores fueron retirados.
 
 - `campos-instrumentos-evaluador.php` agrega seleccion multiple al alta y edicion
   de usuarios; el catalogo procede de `instrumentos`, sin IDs fijos.

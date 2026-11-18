@@ -5,6 +5,8 @@ require_once BASE_DIR . '/config/paths.php';
 require_once CONFIG_DIR . '/conexion.php';
 require_once CONFIG_DIR . '/validacion.php';
 require_once CONFIG_DIR . '/evidencias.php';
+require_once CONFIG_DIR . '/documentos.php';
+require_once CONFIG_DIR . '/procesamiento_documental.php';
 
 $usuarioActual = evidenciaUsuarioActual($conn);
 $user_id = (int)$usuarioActual['id_usuario'];
@@ -53,6 +55,8 @@ try {
   $oldFileNames = array_column($stmtOldFiles->get_result()->fetch_all(MYSQLI_ASSOC), 'valor_archivo');
   $stmtOldFiles->close();
   $newlyUploadedFiles = [];
+  $documentosEncolables = [];
+  $duplicateWarnings = [];
 
   foreach ($attrs as $a) {
     $aid  = (int)$a['id_ate'];
@@ -84,17 +88,17 @@ try {
                  is_array($_FILES['valor_archivo']['name'][$aid]);
 
     // Validaciones previas
-    if ($unico && $cnt > 1) {
+    if (($unico || !$multi) && $cnt > 1) {
       throw new Exception("El atributo {$a['nombre_atributo']} es único y no puede tener múltiples valores.");
     }
 
     $existingFilesByIndex = [];
     if ($gs === 'archivo') {
-      $old = $conn->prepare('SELECT indice, valor_archivo FROM evidencia_valores_atributo WHERE id_evidencia = ? AND id_ate = ?');
+      $old = $conn->prepare('SELECT indice, valor_archivo, valor_archivo_sha256, valor_archivo_mime, valor_archivo_bytes FROM evidencia_valores_atributo WHERE id_evidencia = ? AND id_ate = ?');
       $old->bind_param('ii', $id_evidencia, $aid);
       $old->execute();
       foreach ($old->get_result()->fetch_all(MYSQLI_ASSOC) as $oldValue) {
-        $existingFilesByIndex[(int)$oldValue['indice']] = (string)$oldValue['valor_archivo'];
+        $existingFilesByIndex[(int)$oldValue['indice']] = $oldValue;
       }
       $old->close();
     }
@@ -106,8 +110,8 @@ try {
     $del->close();
 
     $insert = $conn->prepare("INSERT INTO evidencia_valores_atributo
-      (id_evidencia, id_ate, indice, valor_texto, valor_largo, valor_int, valor_decimal, valor_fecha, valor_bool, valor_archivo, valor_json)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+      (id_evidencia, id_ate, indice, valor_texto, valor_largo, valor_int, valor_decimal, valor_fecha, valor_bool, valor_archivo, valor_archivo_sha256, valor_archivo_mime, valor_archivo_bytes, valor_json)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 
     $insert_cnt = 0;
 
@@ -115,17 +119,22 @@ try {
       $indice = (int)$indices[$i];
 
       $val_texto = $val_largo = $val_fecha = $val_archivo = $val_json = null;
+      $val_archivo_sha256 = $val_archivo_mime = null;
+      $val_archivo_bytes = null;
+      $metaEncolable = null;
       $val_int = $val_bool = null;
       $val_decimal = null;
 
       if ($gs === 'texto_corto') {
         $val_texto = trim((string)($arr_texto[$i] ?? ''));
+        if ($val_texto === '' && $req) throw new Exception("{$a['nombre_atributo']}: valor requerido.");
         if ($val_texto === '' && !$req) continue; // permitir vacío no requerido
         if ($maxL && mb_strlen($val_texto) > $maxL) throw new Exception("{$a['nombre_atributo']}: supera longitud máxima.");
         if ($minL && mb_strlen($val_texto) < $minL) throw new Exception("{$a['nombre_atributo']}: por debajo de longitud mínima.");
         if ($regex && $val_texto !== '' && !preg_match('/'.$regex.'/i', $val_texto)) throw new Exception("{$a['nombre_atributo']}: formato inválido.");
       } elseif ($gs === 'texto_largo') {
         $val_largo = trim((string)($arr_largo[$i] ?? ''));
+        if ($val_largo === '' && $req) throw new Exception("{$a['nombre_atributo']}: valor requerido.");
         if ($val_largo === '' && !$req) continue;
         if ($maxL && mb_strlen($val_largo) > $maxL) throw new Exception("{$a['nombre_atributo']}: supera longitud máxima.");
         if ($minL && mb_strlen($val_largo) < $minL) throw new Exception("{$a['nombre_atributo']}: por debajo de longitud mínima.");
@@ -165,30 +174,32 @@ try {
         $val_bool = ($raw === '1') ? 1 : 0;
       } elseif ($gs === 'archivo') {
         // Al editar se conserva el archivo existente si no se selecciona uno nuevo.
-        $fileName = $existingFilesByIndex[$indice] ?? null;
+        $existingFile = $existingFilesByIndex[$indice] ?? null;
+        $fileName = is_array($existingFile) ? (string)$existingFile['valor_archivo'] : null;
+        $val_archivo_sha256 = is_array($existingFile) ? $existingFile['valor_archivo_sha256'] : null;
+        $val_archivo_mime = is_array($existingFile) ? $existingFile['valor_archivo_mime'] : null;
+        $val_archivo_bytes = is_array($existingFile) ? $existingFile['valor_archivo_bytes'] : null;
         if ($has_files) {
           $fn   = $_FILES['valor_archivo']['name'][$aid][$i] ?? null;
           $tmp  = $_FILES['valor_archivo']['tmp_name'][$aid][$i] ?? null;
           $err  = $_FILES['valor_archivo']['error'][$aid][$i] ?? UPLOAD_ERR_NO_FILE;
           $size = $_FILES['valor_archivo']['size'][$aid][$i] ?? 0;
 
+          if ($err !== UPLOAD_ERR_NO_FILE && $err !== UPLOAD_ERR_OK) throw new Exception("{$a['nombre_atributo']}: error al recibir el archivo (código {$err}).");
           if ($err === UPLOAD_ERR_OK && $tmp && is_uploaded_file($tmp)) {
-            if ($size > 10 * 1024 * 1024) throw new Exception("{$a['nombre_atributo']}: archivo excede 10MB.");
-
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime  = $finfo ? finfo_file($finfo, $tmp) : false;
-            if ($finfo) finfo_close($finfo);
-
-            $ext = strtolower(pathinfo($fn, PATHINFO_EXTENSION));
-            $validTypes = ['application/pdf'=>['pdf'], 'image/png'=>['png'], 'image/jpeg'=>['jpg','jpeg'], 'image/webp'=>['webp']];
-            if (!$mime || !isset($validTypes[$mime]) || !in_array($ext, $validTypes[$mime], true)) {
-              throw new Exception("{$a['nombre_atributo']}: tipo de archivo no permitido.");
-            }
-
-            $fileName = 'attr_e'.$id_evidencia.'_a'.$aid.'_'.date('YmdHis').'_'.bin2hex(random_bytes(4)).'.'.$ext;
-            $dest = $baseUploadDir . '/' . $fileName;
+            $meta = documentoAnalizar((string)$tmp, (string)$fn, (int)$size);
+            $matches = documentoCoincidencias($conn, $meta['sha256'], (int)$usuarioActual['id_usuario'], $id_evidencia);
+            if ($matches['mismo_docente']) $duplicateWarnings['own']=true;
+            if ($matches['posible_coincidencia']) $duplicateWarnings['other']=true;
+            $fileName = documentoNombreFisico($meta['extension']);
+            $dest = documentoDestinoSeguro($fileName);
             if (!move_uploaded_file($tmp, $dest)) throw new Exception("{$a['nombre_atributo']}: no se pudo guardar el archivo.");
+            if (hash_file('sha256', $dest) !== $meta['sha256']) { @unlink($dest); throw new Exception("{$a['nombre_atributo']}: falló la comprobación de integridad."); }
+            $val_archivo_sha256 = $meta['sha256'];
+            $val_archivo_mime = $meta['mime'];
+            $val_archivo_bytes = $meta['bytes'];
             $newlyUploadedFiles[] = $fileName;
+            $metaEncolable = $meta;
           }
         }
         if (!$fileName) {
@@ -211,11 +222,12 @@ try {
       } else {
         // fallback texto
         $val_texto = trim((string)($arr_texto[$i] ?? ''));
+        if ($val_texto === '' && $req) throw new Exception("{$a['nombre_atributo']}: valor requerido.");
         if ($val_texto === '' && !$req) continue;
       }
 
       $insert->bind_param(
-        'iiissidisis',
+        'iiissidsisssis',
         $id_evidencia,
         $aid,
         $indice,
@@ -226,9 +238,15 @@ try {
         $val_fecha,
         $val_bool,
         $val_archivo,
+        $val_archivo_sha256,
+        $val_archivo_mime,
+        $val_archivo_bytes,
         $val_json
       );
       $insert->execute();
+      if ($gs==='archivo' && is_array($metaEncolable)) {
+        $documentosEncolables[]=['id_origen'=>(int)$insert->insert_id,'meta'=>$metaEncolable];
+      }
       $insert_cnt++;
     }
 
@@ -246,13 +264,21 @@ try {
   $currentFileNames = array_fill_keys(array_column($stmtCurrentFiles->get_result()->fetch_all(MYSQLI_ASSOC), 'valor_archivo'), true);
   $stmtCurrentFiles->close();
   $conn->commit();
+  $resultadosProcesamiento=[];
+  foreach ($documentosEncolables as $documento) {
+    $resultadosProcesamiento[]=documentoProcesamientoIntentarEncolar($conn,$id_evidencia,'ATRIBUTO',$documento['id_origen'],
+      $documento['meta']['sha256'],$documento['meta']['mime'],$documento['meta']['bytes']);
+  }
   foreach (array_unique($oldFileNames) as $oldFileName) {
     if (!isset($currentFileNames[$oldFileName])) {
-      $oldPath = $baseUploadDir . '/' . basename($oldFileName);
-      if (is_file($oldPath)) @unlink($oldPath);
+      $oldPath = seguridadResolverArchivo((string)$oldFileName);
+      if ($oldPath) @unlink($oldPath);
     }
   }
-  echo json_encode(['status'=>'ok']);
+  $warnings=[];
+  if (!empty($duplicateWarnings['own'])) $warnings[]='Ya existe un archivo idéntico entre tus evidencias.';
+  if (!empty($duplicateWarnings['other'])) $warnings[]='El archivo coincide con otro registro. No se muestran datos de otros usuarios.';
+  echo json_encode(['status'=>'ok','advertencias'=>$warnings,'procesamiento'=>$resultadosProcesamiento]);
 } catch (Exception $ex) {
   $conn->rollback();
   foreach ($newlyUploadedFiles ?? [] as $newFileName) {

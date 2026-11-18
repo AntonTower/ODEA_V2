@@ -66,7 +66,7 @@
     head.innerHTML = `
       <div>
         <div class="font-medium">${escapeHtml(a.nombre_atributo)}</div>
-        <div class="text-hint">${escapeHtml(a.descripcion || '')}</div>
+          <div class="text-hint">${req ? 'Obligatorio' : 'Opcional'}${a.descripcion ? ' — ' + escapeHtml(a.descripcion) : ''}</div>
       </div>
       <div class="attr-actions"></div>
     `;
@@ -193,7 +193,7 @@
         const aTag = document.createElement('a');
         aTag.className = 'btn';
         aTag.style.marginLeft = '6px';
-        aTag.href = '<?= BASE_URL ?>/controllers/docente/evidencia-archivo.php?id=' + encodeURIComponent(document.getElementById('ea_id_evidencia').value) + '&descargar=1';
+        aTag.href = '<?= BASE_URL ?>/controllers/docente/evidencia-archivo.php?id=' + encodeURIComponent(document.getElementById('ea_id_evidencia').value) + '&valor_archivo_id=' + encodeURIComponent(v.id_eva) + '&descargar=1';
         aTag.textContent = 'Descargar actual';
         row.appendChild(aTag);
       }
@@ -260,7 +260,8 @@
       .then(r=>r.json())
       .then(j=>{
         if (j && j.status === 'ok') {
-          if (window.Swal) Swal.fire({icon:'success', title:'Guardado', text:'Datos actualizados.'});
+          const warnings = Array.isArray(j.advertencias) ? j.advertencias : [];
+          if (window.Swal) Swal.fire({icon:warnings.length?'warning':'success', title:warnings.length?'Guardado con advertencia':'Guardado', text:warnings.length?warnings.join(' '):'Datos actualizados.'});
           if (typeof loadDetalle === 'function') loadDetalle();
           close();
         } else {

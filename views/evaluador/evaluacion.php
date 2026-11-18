@@ -34,7 +34,7 @@ if ($rs = $conn->query($qIns)) { while ($r = $rs->fetch_assoc()) $ins[] = $r; $r
   <header class="flex items-center justify-between" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
     <div>
       <h1 class="text-2xl font-semibold">Evaluación de evidencias</h1>
-      <p class="text-muted-foreground">Solo aparecen evidencias con 100% de atributos completados.</p>
+      <p class="text-muted-foreground">Solo aparecen evidencias con sus campos obligatorios completos.</p>
     </div>
   </header>
 
