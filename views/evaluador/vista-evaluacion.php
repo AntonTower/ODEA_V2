@@ -1,7 +1,7 @@
 <?php
 /**
  * Vista HTML (tbody) para la ventana de Evaluación
- * Muestra solo evidencias con 100% de atributos y que tengan al menos 1 instrumento relacionado.
+ * Muestra la completitud de las evidencias con instrumentos dentro del alcance del evaluador.
  * Filtros: estado (todas|pendiente|completa) e instrumento (id).
  */
 
@@ -38,6 +38,8 @@ if ((int)($usuarioActual['id_usuario'] ?? 0) <= 0 || !in_array($user_role, [1, 2
 $estado = isset($_GET['estado']) ? trim($_GET['estado']) : 'todas'; // pendiente|completa|todas
 $inst   = isset($_GET['instrumento']) ? (int)$_GET['instrumento'] : 0;
 
+$instrumentoSeleccionado = $inst > 0 ? " AND i.id_instrumento = $inst" : '';
+
 // Query base
 $sql = "SELECT
           e.id_evidencia, e.titulo, e.fecha_subida, e.archivo, e.id_docente,
@@ -66,12 +68,21 @@ $sql = "SELECT
           SELECT te.id_tipo_evidencia, COUNT(DISTINCT ite.id_instrumento) AS total_inst
           FROM tipos_de_evidencia te
           LEFT JOIN instrumento_tipo_evidencia ite ON ite.id_tipo_evidencia = te.id_tipo_evidencia
-          JOIN instrumentos i ON i.id_instrumento = ite.id_instrumento AND i.activo = 1 AND ($alcance)
+          JOIN instrumentos i ON i.id_instrumento = ite.id_instrumento AND i.activo = 1 AND ($alcance)$instrumentoSeleccionado
           GROUP BY te.id_tipo_evidencia
         ) insts ON insts.id_tipo_evidencia = t.id_tipo_evidencia
         LEFT JOIN (
           SELECT ce.id_evidencia, COUNT(DISTINCT ce.id_instrumento) AS graded
-          FROM calificacion_evidencia ce
+          FROM (
+            SELECT id_evidencia, id_instrumento FROM calificacion_evidencia
+            UNION
+            SELECT ev.id_evidencia, ev.id_instrumento
+            FROM evaluaciones_versionadas ev
+            JOIN versiones_criterios v ON v.id_version=ev.id_version AND v.estado='PUBLICADA'
+            JOIN convocatorias c ON c.id_convocatoria=ev.id_convocatoria AND c.estado='ACTIVA'
+            JOIN periodos_academicos p ON p.id_periodo=c.id_periodo AND p.estado='ACTIVO'
+            WHERE ev.resultado IS NOT NULL
+          ) ce
           JOIN evidencias eg ON eg.id_evidencia=ce.id_evidencia
           JOIN instrumento_tipo_evidencia ite ON ite.id_tipo_evidencia=eg.id_tipo_evidencia AND ite.id_instrumento=ce.id_instrumento
           JOIN instrumentos i ON i.id_instrumento=ce.id_instrumento AND i.activo=1 AND ($alcance)
@@ -138,24 +149,25 @@ $res = $stmt->get_result();
           $totalInst   = (int)$row['total_inst'];
           $gradedInst  = (int)$row['graded_inst'];
 
-          // Solo 100% y con al menos 1 instrumento
-          if ($filledAttrs < $totalAttrs || $totalInst <= 0) continue;
+          // Mostrar la documentación incompleta dentro del alcance de instrumentos.
+          if ($totalInst <= 0) continue;
 
-          $pct = 100;
+          $incompleta = $filledAttrs < $totalAttrs;
+          $pct = $totalAttrs ? (int) round(100 * $filledAttrs / $totalAttrs) : 100;
           $href = $file ? (BASE_URL . '/controllers/docente/evidencia-archivo.php?id=' . $id . '&amp;descargar=1') : '';
           $btnPreview = $file ? '<a class="btn" href="' . BASE_URL . '/controllers/docente/evidencia-archivo.php?id=' . $id . '" target="_blank" rel="noopener" title="Ver documento sin descargar">Ver documento</a> ' : '';
 
           // Corregido: cálculo con operador resta
           $pend = max(0, $totalInst - $gradedInst);
-          $estadoCalc = ($pend === 0) ? 'completa' : 'pendiente';
+          $estadoCalc = (!$incompleta && $pend === 0) ? 'completa' : 'pendiente';
 
           // Aplicar filtro de estado
           if ($estado === 'pendiente' && $estadoCalc !== 'pendiente') continue;
           if ($estado === 'completa' && $estadoCalc !== 'completa')   continue;
 
-          $badgeEstado = $estadoCalc === 'completa'
+          $badgeEstado = $incompleta ? '<span class="badge badge-warn">Documentación incompleta</span>' : ($estadoCalc === 'completa'
             ? '<span class="badge badge-ok">Completa</span>'
-            : '<span class="badge badge-warn">Pendiente ('.$pend.'/'.$totalInst.')</span>';
+            : '<span class="badge badge-warn">Pendiente ('.$pend.'/'.$totalInst.')</span>');
 
           $btnDownload = $file ? '
             <a class="btn" href="'.$href.'" download="'.htmlspecialchars($file).'" title="Descargar archivo">
@@ -183,8 +195,8 @@ $res = $stmt->get_result();
         <td><?= $btnPreview ?><?= $btnDownload ?></td>
         <td><span class="badge" title="<?= htmlspecialchars($row['fecha_subida'] ?? '') ?>"><?= htmlspecialchars($date) ?></span></td>
         <td title="<?= $filledAttrs ?>/<?= $totalAttrs ?> campos obligatorios">
-          <div class="progress"><div class="progress-bar" style="width: 100%;"></div></div>
-          <span style="margin-left:8px; font-size:12px; color:var(--muted-foreground,#555);">100%</span>
+          <div class="progress"><div class="progress-bar" style="width: <?= $pct ?>%;"></div></div>
+          <span style="margin-left:8px; font-size:12px; color:var(--muted-foreground,#555);"><?= $pct ?>%</span>
         </td>
         <td><?= $badgeEstado ?></td>
         <td style="display:flex; gap:8px;"><?= $btnVerEval ?></td>

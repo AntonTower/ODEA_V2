@@ -1,5 +1,35 @@
 # Documentacion tecnica
 
+> Estado validado el 2026-11-18: PHP 8.0.30 CLI y MariaDB 10.4.32. La base local inspeccionada contiene solo el esquema v2. Las migraciones posteriores están en `sql/migrations/` y no se aplicaron a esa base. Véase [informe integral](INFORME_VALIDACION_FINAL_ODEA.md).
+
+## Arquitectura tras las fases documentales
+
+```mermaid
+flowchart LR
+  U[Docente] --> E[Evidencia y atributos]
+  E --> F[Almacenamiento local privado]
+  E --> Q[Cola documental]
+  Q --> X[Extracción local / OCR configurable]
+  X --> R[Revisión humana de metadatos]
+  R --> C[Reglas institucionales versionadas]
+  C --> P[Propuestas por instrumento y convocatoria]
+  P --> H[Confirmación humana]
+  V[Evaluador asignado] --> EV[Evaluación por contexto]
+  EV --> HE[Historial append-only]
+  A[Administrador] --> CFG[Usuarios, instrumentos, periodos y reglas]
+  CFG --> C
+```
+
+Las propuestas documentales no son dictámenes ni calificaciones. Las tablas de convocatorias, estados/historial, extracción y clasificación se crean mediante las migraciones ordenadas del proyecto; la base v2 por sí sola no contiene esos módulos.
+
+## Configuración de conexión
+
+`config/conexion.php` lee `GESTOR_DB_HOST`, `GESTOR_DB_NAME`, `GESTOR_DB_USER`, `GESTOR_DB_PASSWORD` y `GESTOR_DB_PORT`. Los defaults (`127.0.0.1`, `gestor_evidencia_produccion`, `root` sin contraseña, `3308`) son solo para desarrollo local XAMPP. En despliegue, define las variables en el servicio web y usa un usuario de privilegio mínimo. Los errores de conexión se registran en log y la respuesta HTTP no muestra credenciales ni mensajes SQL.
+
+## Migraciones versionadas
+
+Importación inicial: `sql/gestor_evidencia_produccion_v2.sql`. Migraciones incrementales en orden: `20261118_integridad_documental.sql`, `20261119_modelo_academico_versionado.sql`, `20261120_historial_estados_evaluacion.sql`, `20261121_procesamiento_documental.sql`, `20261122_revision_metadatos_documentales.sql`, `20261123_motor_clasificacion_multiinstrumento.sql`. Ensayar sobre staging restaurado y comprobar cada módulo antes de producción. No reimportar v2 sobre una base existente.
+
 ## Arquitectura general
 
 El sistema esta construido como una aplicacion web PHP procedural. No utiliza framework MVC formal; la organizacion se basa en archivos PHP independientes para vistas, modales, controladores AJAX y operaciones CRUD.
@@ -37,16 +67,17 @@ La carpeta `uploads` almacena archivos cargados por usuarios y no se versiona. L
 
 ## Configuracion de base de datos
 
-La conexion se define en `conexion.php`:
+La conexión se define en `config/conexion.php` y acepta configuración privada del entorno:
 
 ```php
-$servername = "localhost";
-$database = getenv("GESTOR_DB_NAME") ?: "gestor_evidencia_produccion";
-$username = "root";
-$password = "";
+GESTOR_DB_HOST=127.0.0.1
+GESTOR_DB_NAME=gestor_evidencia_produccion
+GESTOR_DB_USER=odea_app
+GESTOR_DB_PASSWORD=<secreto privado>
+GESTOR_DB_PORT=3308
 ```
 
-Para produccion se recomienda cambiar estos valores por un usuario especifico de base de datos con permisos limitados.
+Los valores ejemplo no son credenciales de producción. Los defaults root/vacío solo sirven para XAMPP local aislado. Configura las variables en Apache/PHP-FPM, no en JavaScript ni en archivos públicos.
 
 El archivo SQL completo para la nueva version es:
 

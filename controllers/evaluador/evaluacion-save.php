@@ -24,6 +24,7 @@ $evidenciaId=(int)($_POST['id_evidencia']??0);
 $instrumentoId=(int)($_POST['id_instrumento']??0);
 $versionId=(int)($_POST['id_version']??0);
 $versionDb=$versionId>0?$versionId:null;
+$convocatoriaSolicitada=isset($_POST['id_convocatoria']) ? filter_var($_POST['id_convocatoria'], FILTER_VALIDATE_INT) : null;
 $estadoNuevoId=(int)($_POST['id_estado']??0);
 $codigoEstado=trim((string)($_POST['codigo_estado']??''));
 $resultadoEnviado=array_key_exists('resultado',$_POST) && trim((string)$_POST['resultado'])!=='';
@@ -68,6 +69,10 @@ if ($versionId>0) {
     $convocatoriaId=(int)$ctx['id_convocatoria'];
 }
 
+if ($convocatoriaSolicitada !== null && $convocatoriaSolicitada !== $convocatoriaId) {
+    evaluacionRespuesta(false,'La convocatoria no corresponde a la versión seleccionada.');
+}
+
 $resultValue=null;
 if ($resultadoEnviado) {
     if ($instrumento['tipo_calificacion']==='NUMERICA') {
@@ -109,6 +114,9 @@ try {
     if ($actual && (int)$actual['cerrada']===1 && !in_array($rol,[1,2],true)) {
         throw new RuntimeException('La evaluación está cerrada; solicita su reapertura administrativa.');
     }
+    if ($actual && $rol===3 && (int)$actual['id_usuario_eval']>0 && (int)$actual['id_usuario_eval']!==$userId) {
+        throw new RuntimeException('La evaluación corresponde a otro responsable.');
+    }
     if ($actual && (int)$actual['cerrada']===1 && $motivo==='') {
         throw new RuntimeException('Indica el motivo administrativo para modificar una evaluación cerrada.');
     }
@@ -138,8 +146,9 @@ try {
     if ($actorData) { $nombreActor=trim($actorData['nombre'].' '.$actorData['apellidop'].' '.$actorData['apellidom']); $correoActor=$actorData['correo']; }
 
     if ($creada) {
-        $st=$conn->prepare('INSERT INTO evaluaciones_versionadas (id_evidencia,id_instrumento,id_convocatoria,id_version,id_estado,resultado,comentario,id_usuario_eval) VALUES (?,?,?,?,?,?,?,?)');
-        $st->bind_param('iiiiidsi',$evidenciaId,$instrumentoId,$convocatoriaId,$versionDb,$nuevoEstadoId,$nuevoResultado,$nuevoComentario,$userId);
+        $st=$conn->prepare('INSERT INTO evaluaciones_versionadas (id_evidencia,id_instrumento,id_convocatoria,id_version,id_estado,resultado,comentario,id_usuario_eval,cerrada,cerrada_en) VALUES (?,?,?,?,?,?,?,?,?,IF(?,CURRENT_TIMESTAMP,NULL))');
+        $nuevoCerrada=(int)$cerrar;
+        $st->bind_param('iiiiidsiii',$evidenciaId,$instrumentoId,$convocatoriaId,$versionDb,$nuevoEstadoId,$nuevoResultado,$nuevoComentario,$userId,$nuevoCerrada,$nuevoCerrada);
         $st->execute(); $evaluacionId=(int)$st->insert_id; $st->close();
     } else {
         if (!$resultadoCambio && !$comentarioCambio && !$estadoCambio && !$cerrar && (int)$actual['cerrada']===0) {

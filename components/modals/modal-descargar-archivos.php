@@ -44,6 +44,7 @@
   const descCount = document.getElementById('descCount');
   const sub = document.getElementById('dlgDescSub');
 
+  let reportScope = '';
   let currentInstId = 0;
 
   function lock(lock){ document.documentElement.style.overflow = lock ? 'hidden' : ''; }
@@ -74,7 +75,7 @@
                   .map(ch=>ch.value).filter(Boolean);
     if (!ids.length) return;
     // descarga en nueva pestaña
-    const url = 'descargas-api.php?action=zip&instrumento='+encodeURIComponent(currentInstId)+'&ids='+encodeURIComponent(ids.join(','));
+    const url = '<?= BASE_URL ?>/controllers/comunes/descargas-api.php?action=zip&instrumento='+encodeURIComponent(currentInstId)+'&ids='+encodeURIComponent(ids.join(',')) + '&' + reportScope;
     window.open(url, '_blank');
     close();
   });
@@ -127,7 +128,7 @@
     descControles.style.display = 'none';
     descAlert.textContent = '';
     try {
-      const resp = await fetch('descargas-api.php?action=list&instrumento='+encodeURIComponent(instId), {cache:'no-store'});
+      const resp = await fetch('<?= BASE_URL ?>/controllers/comunes/descargas-api.php?action=list&solo_aceptadas=1&instrumento='+encodeURIComponent(instId) + '&' + reportScope, {cache:'no-store'});
       const ct = resp.headers.get('Content-Type') || '';
       if (!resp.ok) {
         const txt = await resp.text();
@@ -159,8 +160,10 @@
   }
 
   // Exponer función global para abrir el modal desde la página principal
-  window.__openDescModal = function(instId, instName){
+  window.__openDescModal = function(instId, instName, filtros = ''){
     currentInstId = instId;
+    const params = new URLSearchParams(filtros);
+    reportScope = params.toString();
     open();
     loadAprobadas(instId, instName || '');
   };

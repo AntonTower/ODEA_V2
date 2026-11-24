@@ -1,0 +1,288 @@
+{
+    "fase":  2,
+    "estado":  "EJECUTADA_CON_SUBCASOS_PENDIENTES",
+    "entorno_qa":  {
+                       "url":  "http://127.0.0.1:8088",
+                       "esquema":  "odea_qa",
+                       "puerto_db":  3318
+                   },
+    "prefijo":  "QA_ODEA",
+    "usuarios":  [
+                     {
+                         "id_usuario":  5,
+                         "rol":  4,
+                         "activo":  true
+                     },
+                     {
+                         "id_usuario":  6,
+                         "rol":  3,
+                         "activo":  true,
+                         "instrumentos":  [
+                                              1,
+                                              2,
+                                              3
+                                          ]
+                     },
+                     {
+                         "id_usuario":  7,
+                         "rol":  2,
+                         "activo":  true
+                     }
+                 ],
+    "instrumentos_qa":  [
+                            {
+                                "id_instrumento":  5,
+                                "abreviatura":  "QA_ODEA_INST",
+                                "id_tipo_evidencia":  6,
+                                "tipo_documental":  "QA_ODEA_Tipo_Documental",
+                                "tipo_calificacion":  "NUMERICA",
+                                "min":  0,
+                                "max":  10
+                            }
+                        ],
+    "academico":  [
+                      {
+                          "instrumento":  "SNII",
+                          "id_instrumento":  1,
+                          "periodo":  {
+                                          "id":  3,
+                                          "codigo":  "QA_ODEA_PERIODO_SNII",
+                                          "estado":  "ACTIVO"
+                                      },
+                          "convocatoria":  {
+                                               "id":  3,
+                                               "codigo":  "QA_ODEA_CONVOCATORIA_SNII",
+                                               "id_periodo":  3,
+                                               "estado":  "ACTIVA"
+                                           },
+                          "version":  {
+                                          "id":  2,
+                                          "id_convocatoria":  3,
+                                          "codigo":  "1.0",
+                                          "estado":  "PUBLICADA"
+                                      },
+                          "categoria":  {
+                                            "id":  2,
+                                            "id_version":  2,
+                                            "codigo":  "QA_ODEA_CAT_SNII"
+                                        },
+                          "criterio":  {
+                                           "id":  1,
+                                           "id_categoria":  2,
+                                           "id_version":  2,
+                                           "codigo":  "QA_ODEA_CRIT_SNII"
+                                       },
+                          "subcriterio":  {
+                                              "id":  1,
+                                              "id_criterio":  1,
+                                              "id_version":  2,
+                                              "codigo":  "QA_ODEA_SUB_SNII"
+                                          },
+                          "requisito":  {
+                                            "id":  2,
+                                            "id_criterio":  1,
+                                            "id_subcriterio":  1,
+                                            "id_version":  2,
+                                            "codigo":  "QA_ODEA_REQ_SNII"
+                                        },
+                          "fuente":  {
+                                         "id":  1,
+                                         "id_criterio":  1,
+                                         "id_version":  2,
+                                         "nombre":  "QA_ODEA_FUENTE_SNII",
+                                         "estado":  "VALIDADA",
+                                         "id_responsable_validacion":  1
+                                     }
+                      },
+                      {
+                          "instrumento":  "PRODEP",
+                          "id_instrumento":  2,
+                          "periodo":  {
+                                          "id":  4,
+                                          "codigo":  "QA_ODEA_PERIODO_PRODEP",
+                                          "estado":  "ACTIVO"
+                                      },
+                          "convocatoria":  {
+                                               "id":  4,
+                                               "codigo":  "QA_ODEA_CONVOCATORIA_PRODEP",
+                                               "id_periodo":  4,
+                                               "estado":  "ACTIVA"
+                                           },
+                          "version":  {
+                                          "id":  3,
+                                          "id_convocatoria":  4,
+                                          "codigo":  "1.0",
+                                          "estado":  "PUBLICADA"
+                                      },
+                          "categoria":  {
+                                            "id":  3,
+                                            "id_version":  3,
+                                            "codigo":  "QA_ODEA_CAT_PRODEP"
+                                        },
+                          "criterio":  {
+                                           "id":  2,
+                                           "id_categoria":  3,
+                                           "id_version":  3,
+                                           "codigo":  "QA_ODEA_CRIT_PRODEP"
+                                       },
+                          "subcriterio":  {
+                                              "id":  2,
+                                              "id_criterio":  2,
+                                              "id_version":  3,
+                                              "codigo":  "QA_ODEA_SUB_PRODEP"
+                                          },
+                          "requisito":  {
+                                            "id":  3,
+                                            "id_criterio":  2,
+                                            "id_subcriterio":  2,
+                                            "id_version":  3,
+                                            "codigo":  "QA_ODEA_REQ_PRODEP"
+                                        },
+                          "fuente":  {
+                                         "id":  2,
+                                         "id_criterio":  2,
+                                         "id_version":  3,
+                                         "nombre":  "QA_ODEA_FUENTE_PRODEP",
+                                         "estado":  "VALIDADA",
+                                         "id_responsable_validacion":  1
+                                     }
+                      },
+                      {
+                          "instrumento":  "ESDEPED",
+                          "id_instrumento":  3,
+                          "periodo":  {
+                                          "id":  5,
+                                          "codigo":  "QA_ODEA_PERIODO_ESDEPED",
+                                          "estado":  "ACTIVO"
+                                      },
+                          "convocatoria":  {
+                                               "id":  5,
+                                               "codigo":  "QA_ODEA_CONVOCATORIA_ESDEPED",
+                                               "id_periodo":  5,
+                                               "estado":  "ACTIVA"
+                                           },
+                          "version":  {
+                                          "id":  4,
+                                          "id_convocatoria":  5,
+                                          "codigo":  "1.0",
+                                          "estado":  "PUBLICADA"
+                                      },
+                          "categoria":  {
+                                            "id":  4,
+                                            "id_version":  4,
+                                            "codigo":  "QA_ODEA_CAT_ESDEPED"
+                                        },
+                          "criterio":  {
+                                           "id":  3,
+                                           "id_categoria":  4,
+                                           "id_version":  4,
+                                           "codigo":  "QA_ODEA_CRIT_ESDEPED"
+                                       },
+                          "subcriterio":  {
+                                              "id":  3,
+                                              "id_criterio":  3,
+                                              "id_version":  4,
+                                              "codigo":  "QA_ODEA_SUB_ESDEPED"
+                                          },
+                          "requisito":  {
+                                            "id":  4,
+                                            "id_criterio":  3,
+                                            "id_subcriterio":  3,
+                                            "id_version":  4,
+                                            "codigo":  "QA_ODEA_REQ_ESDEPED"
+                                        },
+                          "fuente":  {
+                                         "id":  3,
+                                         "id_criterio":  3,
+                                         "id_version":  4,
+                                         "nombre":  "QA_ODEA_FUENTE_ESDEPED",
+                                         "estado":  "VALIDADA",
+                                         "id_responsable_validacion":  1
+                                     }
+                      }
+                  ],
+    "capturas":  [
+                     "SA-01-dashboard.png",
+                     "SA-01-login.png",
+                     "SA-01-menu.png",
+                     "SA-02-Administrador-creado.png",
+                     "SA-02-correo-duplicado.png",
+                     "SA-02-Docente-creado.png",
+                     "SA-02-Evaluador-creado.png",
+                     "SA-02-login-desactivado.png",
+                     "SA-02-login-reactivado.png",
+                     "SA-02-obligatorios.png",
+                     "SA-02-perfil-docente-QA.png",
+                     "SA-02-usuarios-antes.png",
+                     "SA-02-usuarios-despues.png",
+                     "SA-03-instrumento-creado.png",
+                     "SA-03-instrumentos-antes.png",
+                     "SA-03-instrumentos-despues.png",
+                     "SA-03-rango.png",
+                     "SA-03-tipo-documental.png",
+                     "SA-04-duplicado-corregido.png",
+                     "SA-04-ESDEPED-antes.png",
+                     "SA-04-ESDEPED-despues.png",
+                     "SA-04-ESDEPED-fechas-invalidas.png",
+                     "SA-04-PRODEP-antes.png",
+                     "SA-04-PRODEP-despues.png",
+                     "SA-04-PRODEP-fechas-invalidas.png",
+                     "SA-04-SNII-antes.png",
+                     "SA-04-SNII-despues.png",
+                     "SA-04-SNII-fechas-invalidas.png",
+                     "SA-05-convocatorias-nueva-sesion.png",
+                     "SA-05-ESDEPED-antes.png",
+                     "SA-05-ESDEPED-despues.png",
+                     "SA-05-ESDEPED-detalle.png",
+                     "SA-05-ESDEPED-sin-version.png",
+                     "SA-05-PRODEP-antes.png",
+                     "SA-05-PRODEP-despues.png",
+                     "SA-05-PRODEP-detalle.png",
+                     "SA-05-PRODEP-sin-version.png",
+                     "SA-05-SNII-antes.png",
+                     "SA-05-SNII-despues.png",
+                     "SA-05-SNII-detalle.png",
+                     "SA-05-SNII-sin-version.png",
+                     "SA-06-ESDEPED-antes.png",
+                     "SA-06-ESDEPED-despues.png",
+                     "SA-06-PRODEP-antes.png",
+                     "SA-06-PRODEP-despues.png",
+                     "SA-06-SNII-antes.png",
+                     "SA-06-SNII-despues.png",
+                     "SA-07-ESDEPED-antes.png",
+                     "SA-07-ESDEPED-despues.png",
+                     "SA-07-PRODEP-antes.png",
+                     "SA-07-PRODEP-despues.png",
+                     "SA-07-SNII-antes.png",
+                     "SA-07-SNII-despues.png",
+                     "SA-08-ESDEPED-antes.png",
+                     "SA-08-ESDEPED-despues.png",
+                     "SA-08-ESDEPED-validada.png",
+                     "SA-08-PRODEP-antes.png",
+                     "SA-08-PRODEP-despues.png",
+                     "SA-08-PRODEP-validada.png",
+                     "SA-08-SNII-antes.png",
+                     "SA-08-SNII-despues.png",
+                     "SA-08-SNII-validada.png",
+                     "SA-09-ESDEPED-activa.png",
+                     "SA-09-ESDEPED-edicion-rechazada.png",
+                     "SA-09-ESDEPED-fuente-pendiente.png",
+                     "SA-09-ESDEPED-incompleta.png",
+                     "SA-09-ESDEPED-publicada.png",
+                     "SA-09-PRODEP-activa.png",
+                     "SA-09-PRODEP-edicion-rechazada.png",
+                     "SA-09-PRODEP-fuente-pendiente.png",
+                     "SA-09-PRODEP-incompleta.png",
+                     "SA-09-PRODEP-publicada.png",
+                     "SA-09-SNII-activa.png",
+                     "SA-09-SNII-edicion-rechazada.png",
+                     "SA-09-SNII-fuente-pendiente.png",
+                     "SA-09-SNII-incompleta.png",
+                     "SA-09-SNII-publicada.png",
+                     "SA-10-csrf-invalido.png",
+                     "SA-10-id-inexistente.png",
+                     "SA-10-ruta-protegida.png",
+                     "SA-10-sesion-cerrada.png",
+                     "SA-10-sesion-expirada.png"
+                 ]
+}

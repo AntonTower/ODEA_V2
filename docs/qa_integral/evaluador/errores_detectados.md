@@ -1,0 +1,20 @@
+# Errores detectados
+
+| Caso | Situación inicial | Corrección | Repetición |
+|---|---|---|---|
+| EV-05 | La bandeja omitía todas las evidencias con requisitos de atributo incompletos | Se muestran dentro del alcance autorizado, con avance y estado documental incompleto. La validación de guardado sigue en el servidor | La evidencia 8 se mostró al 0 %. El guardado fue rechazado y SQL confirmó cero evaluaciones para ella |
+| EV-08, EV-12 | Cambiar a un contexto versionado vaciaba el resultado y el comentario. El historial visual omitía resultados y contexto | El catálogo carga el vigente por instrumento y versión. El formulario recupera su estado, resultado y comentario. El historial muestra resultados anterior y nuevo, actor, fecha, estados y contexto | Una sesión nueva recuperó las evaluaciones 1 y 2. El historial mostró el cambio de 0 a 1 |
+| EV-11 | El progreso de la bandeja solo contaba calificaciones legadas y el filtro por instrumento conservaba el total global | La bandeja cuenta resultados de versiones publicadas con convocatoria y periodo activos, y limita el conteo al instrumento elegido | Para SNII, la evidencia 5 figura en Completas y las evidencias 6–8 en Pendientes |
+| EV-11 | Listado de descargas vacío, PDF de 1,797 bytes sin resultados y ZIP HTTP 404 pese a la aceptación versionada | Pendiente. Los reportes actuales consultan calificaciones legadas. Se conservó el registro versionado y el historial sin duplicarlo en el contexto legado | El reporte del instrumento no asignado rechazó el acceso con 403 |
+
+Los PHP modificados pasaron el lint. Cotejar el tablero, el filtro y el historial con las capturas y las consultas de esta fase.
+
+
+## Corrección final
+
+- **Reportes**. El listado, el PDF y el ZIP leían únicamente `calificacion_evidencia`. La evidencia 5 tiene su dictamen en `evaluaciones_versionadas`. `config/reportes.php` centraliza el dictamen general para esos tres consumidores, el panel de calificaciones y el expediente. Usa el estado **ACEPTADA** para dictámenes actuales y comprueba la presencia de los atributos obligatorios. Conserva el umbral histórico únicamente en calificaciones puramente legadas. Las tablas de resultados por criterio y subcriterio estaban vacías en QA y se mantienen independientes del dictamen general.
+- **Coexistencia**. Se conserva un registro por contexto versionado. En la consulta general se omite el legado del mismo par evidencia–instrumento si hay dictamen vigente en el otro modelo. El filtro explícito `LEGADA` recupera calificaciones históricas incluso cuando existe una evaluación versionada. La selección ZIP elimina duplicados físicos por evidencia. El contexto se filtra por instrumento, convocatoria, versión y estado. La consulta no crea calificaciones de compatibilidad.
+- **Cierre**. El alta inicial podía registrar CIERRE sin asignar `cerrada` ni `cerrada_en`. Se corrigió `controllers/evaluador/evaluacion-save.php` para guardar ambas en la misma transacción. La evaluación 3 se cerró administrativamente y conserva los dos eventos del ensayo. Se añadieron validaciones defensivas para impedir cambios del Evaluador en evaluaciones de otro responsable y rechazar una convocatoria que difiera de la versión seleccionada.
+- **Comprobación legada**. Dos filas sintéticas de una prueba de coexistencia prevista como temporal aparecieron en la tabla persistente de QA. Se revirtieron exclusivamente esas filas tras verificar sus IDs, contenido y ausencia de dependencias. La tabla volvió a cero filas. La secuencia de IDs pudo avanzar. La comprobación confirmó preferencia versionada y lectura histórica explícita. El esquema original y los dictámenes existentes quedaron fuera de la prueba.
+
+Archivos del flujo de reportes: `config/reportes.php`, `controllers/comunes/descargas-api.php`, `views/docente/calificaciones-pdf.php`, `views/docente/calificaciones-recibidas.php`, `views/docente/vista-calificaciones-recibidas.php`, `views/docente/expediente.php` y `components/modals/modal-descargar-archivos.php`. La consulta de detalle se amplió en `controllers/evaluador/evaluacion-get.php`.

@@ -60,6 +60,69 @@ $emailUser = $_SESSION['EMAIL'] ?? '';
   <title>ODEA - Plataforma Académica</title>
   <link rel="stylesheet" href="<?= BASE_URL ?>/styles/global.css">
   <link rel="shortcut icon" href="<?= BASE_URL ?>/assets/icons/favicon.ico">
+  <style>
+    /* Estilos locales del header; la interacción sigue en sus scripts actuales. */
+    .app-header .header-inner { min-width: 0; min-height: 68px; padding-block: 10px; gap: 16px; }
+    .app-header .header-left, .app-header .header-right { min-width: 0; }
+    .app-header .header-left { flex: 1 1 auto; }
+    .app-header .brand { flex: 0 1 auto; }
+    .app-header .brand-box {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: linear-gradient(145deg, var(--primary), color-mix(in srgb, var(--primary) 68%, #50a5c8));
+      box-shadow: 0 5px 14px color-mix(in srgb, var(--primary) 20%, transparent);
+    }
+    .app-header .brand-box .icon { width: 21px; height: 21px; }
+    .app-header .brand-title { font-size: 1.08rem; font-weight: 750; letter-spacing: .015em; }
+    .app-header .brand-subtitle { margin-top: 3px; font-size: .75rem; letter-spacing: .01em; }
+    .app-header .header-right { flex: 0 0 auto; gap: 12px; }
+    .app-header #themeToggle { min-height: 40px; }
+    .app-header .header-user-summary {
+      display: grid; min-width: 0; max-width: 220px; gap: 2px;
+      padding-inline: 4px 8px; text-align: right;
+    }
+    .app-header .header-user-name, .app-header .header-user-email {
+      overflow: hidden; margin: 0; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .app-header .header-user-name { color: var(--foreground); font-size: .82rem; font-weight: 650; }
+    .app-header .header-user-email { color: var(--muted-foreground); font-size: .72rem; }
+    .app-header .avatar-button {
+      width: 42px; height: 42px; border: 2px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+      background: var(--accent); color: var(--accent-foreground); font-weight: 700;
+      box-shadow: 0 2px 8px rgba(18, 42, 64, .08);
+    }
+    .app-header .avatar-button:hover, .app-header .avatar-button[aria-expanded="true"] {
+      border-color: var(--primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ring) 14%, transparent);
+    }
+    .app-header .dropdown-menu { width: min(320px, calc(100vw - 24px)); padding: 10px; border-radius: 14px; }
+    .app-header .dropdown-header { min-width: 0; padding: 7px; }
+    .app-header .dropdown-header .profile-text { min-width: 0; }
+    .app-header .dropdown-header .profile-name, .app-header .dropdown-header .profile-email { overflow-wrap: anywhere; }
+    .app-header .dropdown-item { min-height: 42px; border-radius: 9px; }
+    .app-header .dropdown-item .icon { flex: 0 0 18px; width: 18px; height: 18px; }
+    .app-header .logout-form { width: 100%; }
+    .app-header .logout-form button { text-align: left; }
+    @media (max-width: 1199.98px) { .app-header .header-user-summary { display: none; } }
+    @media (max-width: 1023.98px) {
+      .app-header .header-inner { min-height: 62px; }
+      .app-header .header-left { gap: 10px; }
+      .app-header #headerHamburger { flex: 0 0 40px; }
+    }
+    @media (max-width: 430px) {
+      .app-header .header-inner { gap: 8px; padding-block: 8px; }
+      .app-header .header-left, .app-header .header-right { gap: 7px; }
+      .app-header .brand { gap: 8px; }
+      .app-header .brand-box { width: 36px; height: 36px; flex-basis: 36px; }
+      .app-header .brand-title { font-size: 1rem; }
+      .app-header .brand-subtitle { max-width: 42vw; }
+      .app-header .avatar-button { width: 38px; height: 38px; }
+    }
+    @media (max-width: 359px) {
+      .app-header .brand-subtitle { display: none; }
+      .app-header .brand-box { width: 34px; height: 34px; flex-basis: 34px; }
+      .app-header #headerHamburger { flex-basis: 38px; min-width: 38px; padding: 7px; }
+      .app-header .avatar-button { width: 36px; height: 36px; }
+    }
+  </style>
   <script>
   (function(){
     const originalFetch = window.fetch.bind(window);
@@ -127,6 +190,10 @@ $emailUser = $_SESSION['EMAIL'] ?? '';
 
         <?php if ($loggedIn): ?>
           <!-- Dropdown de usuario (desktop y móvil) -->
+          <div class="header-user-summary" aria-label="Usuario actual">
+            <p class="header-user-name"><?= htmlspecialchars($fullName ?: 'Usuario') ?></p>
+            <p class="header-user-email"><?= htmlspecialchars($emailUser) ?></p>
+          </div>
           <div class=" dropdown dropdown-right">
             <button id="profileBtn" class="avatar avatar-button" aria-haspopup="menu" aria-expanded="false" aria-controls="profileMenu">
               <?= htmlspecialchars($initials) ?>

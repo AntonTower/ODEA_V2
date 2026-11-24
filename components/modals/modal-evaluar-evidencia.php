@@ -137,7 +137,7 @@
   }
 
   /* ========= Instrumentos: cargar y renderizar ========= */
-  function loadInstruments(eviId){
+  function loadInstruments(eviId, instrumentoSeleccionado = 0, versionSeleccionada = 0){
     const carga = cargaActual;
     const wrap = document.getElementById('evalInstruments');
     wrap.innerHTML = '<p class="text-muted">Cargando instrumentos…</p>';
@@ -195,12 +195,26 @@
           `;
           if (!it.puede_evaluar) box.querySelectorAll('input, select, button').forEach(el => el.disabled = true);
           const versionSelect=box.querySelector('#version_'+idInst);
-          versionSelect.addEventListener('change',()=>{
-            if (Number(versionSelect.value)>0) {
-              const result=document.getElementById('res_'+idInst); if(result) result.value='';
-              const comment=document.getElementById('com_'+idInst); if(comment) comment.value='';
-            }
-          });
+          const updateContext = () => {
+            const idVersion = Number(versionSelect.value);
+            const vigente = idVersion > 0
+              ? (it.versiones || []).find(v => Number(v.id_version) === idVersion)?.evaluacion
+              : it;
+            box.querySelector('#res_' + idInst).value = vigente?.resultado == null
+              ? '' : String(Number(vigente.resultado));
+            box.querySelector('#com_' + idInst).value = vigente?.comentario ?? '';
+            box.querySelector('#estado_' + idInst).value = vigente?.estado_codigo ?? j.estados?.[0]?.codigo ?? '';
+            box.querySelector('#motivo_' + idInst).value = '';
+            box.querySelector('#meta_' + idInst).textContent = vigente?.actualizado_en
+              ? 'Última actualización: ' + vigente.actualizado_en : 'Sin calificación';
+            const save = box.querySelector('button.btn-primary');
+            save.disabled = !it.puede_evaluar;
+          };
+          versionSelect.addEventListener('change', updateContext);
+          if (Number(idInst) === instrumentoSeleccionado && versionSeleccionada > 0) {
+            versionSelect.value = String(versionSeleccionada);
+            updateContext();
+          }
           frag.appendChild(box);
         });
         wrap.innerHTML = ''; wrap.appendChild(frag);
@@ -240,7 +254,7 @@
       .then(j=>{
         if (j && j.status === 'ok') {
           if (window.Swal) Swal.fire({icon:'success', title:'Guardado', text:'Calificación registrada.'});
-          document.getElementById('meta_'+instId).textContent = 'Actualizado hace un momento';
+          if (document.getElementById('dlgEvalTitle').textContent === 'Evaluar evidencia #' + eviId) loadInstruments(eviId, instId, idVersion);
           if (typeof loadTablaEval === 'function') loadTablaEval(); // refresca la tabla principal si existe
         } else {
           if (window.Swal) Swal.fire({icon:'error', title:'Error', text: (j && j.message) ? j.message : 'No se pudo guardar.'});
@@ -253,7 +267,16 @@
     fetch('<?= BASE_URL ?>/controllers/evaluador/evaluacion-historial.php?id_evidencia='+encodeURIComponent(eviId)+'&id_instrumento='+encodeURIComponent(instId))
       .then(r=>r.json()).then(j=>{
         if (!j || j.status!=='ok') throw new Error(j?.message || 'No se pudo consultar el historial.');
-        const lines=(j.historial||[]).map(h=>`${escapeHtml(h.creado_en)} · ${escapeHtml(h.tipo_evento)} · ${escapeHtml(h.estado_nuevo||'Sin estado')} · ${escapeHtml(h.actor_nombre||'Usuario')}<br>${escapeHtml(h.comentario_nuevo||h.motivo||'')}`).join('<hr>') || 'Sin eventos.';
+        const lines = (j.historial || []).map(h => {
+          const contexto = h.id_version
+            ? 'Convocatoria #' + h.id_convocatoria + ' · Versión #' + h.id_version
+            : 'Contexto sin versión';
+          const cambio = (h.estado_anterior ?? 'Sin estado') + ' → ' + (h.estado_nuevo ?? 'Sin estado');
+          const resultado = (h.resultado_anterior ?? 'Sin resultado') + ' → ' + (h.resultado_nuevo ?? 'Sin resultado');
+          const encabezado = [h.creado_en, h.tipo_evento, h.actor_nombre || 'Usuario', contexto].join(' · ');
+          return [encabezado, cambio, resultado, h.comentario_nuevo || h.motivo || '']
+            .map(escapeHtml).join('<br>');
+        }).join('<hr>') || 'Sin eventos.';
         if (window.Swal) Swal.fire({title:'Historial de evaluación',html:lines,width:700});
       }).catch(e=>{ if(window.Swal) Swal.fire({icon:'error',title:'Error',text:e.message}); });
   };

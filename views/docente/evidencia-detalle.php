@@ -177,6 +177,7 @@ include COMPONENTS_DIR . '/layout/left-menu.php';
       </div>
     </div>
   <?php endif; ?>
+  <?php include __DIR__.'/aplicaciones-academicas.php'; ?>
 </section>
 
 <!-- SweetAlert2 -->

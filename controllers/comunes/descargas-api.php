@@ -14,13 +14,9 @@ require_once __DIR__ . '/../../config/paths.php';
 require_once CONFIG_DIR . '/sesion.php';
 require_once CONFIG_DIR . '/conexion.php';
 require_once CONFIG_DIR . '/seguridad.php';
+require_once CONFIG_DIR . '/reportes.php';
 $usuarioActual = seguridadUsuarioActual($conn);
 if (!(int)$usuarioActual['id_usuario']) json_out(['status'=>'error','message'=>'Sesión no autorizada'], 401);
-
-$user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = (int)$usuarioActual['rol'];
-
-const NUMERIC_PASS_PCT = 0.60;
 
 // ---------- Utilidades ----------
 function safe_filename(string $name): string {
@@ -49,68 +45,18 @@ function text_out(string $text, int $code = 200): void {
   exit;
 }
 
-function get_aprobadas(mysqli $conn, int $instId, int $userId, int $userRole): array {
-  $sql = "SELECT
-            e.id_evidencia, e.titulo, e.archivo, e.id_docente,
-            i.id_instrumento, i.abreviatura, i.nombre_completo, i.tipo_calificacion,
-            COALESCE(i.min_calificacion,0)  AS min_cal,
-            COALESCE(i.max_calificacion,10) AS max_cal,
-            ce.resultado
-          FROM evidencias e
-          JOIN instrumento_tipo_evidencia ite
-                ON ite.id_tipo_evidencia = e.id_tipo_evidencia
-               AND ite.id_instrumento    = ?
-          JOIN instrumentos i
-                ON i.id_instrumento = ite.id_instrumento
-               AND i.activo = 1
-          LEFT JOIN calificacion_evidencia ce
-                ON ce.id_evidencia  = e.id_evidencia
-               AND ce.id_instrumento = i.id_instrumento
-          WHERE e.ocultar = 0";
-  $types = 'i'; $params = [$instId];
-  if ($userRole === 4) { // docente: solo sus evidencias
-    $sql .= " AND e.id_docente = ? ";
-    $types .= 'i'; $params[] = $userId;
+function reportesArchivos(mysqli $conn, array $usuario, int $instrumento, bool $soloAceptadas): array {
+  $filtros = reportesFiltrosContexto($_GET);
+  $filtros['solo_aceptadas'] = $soloAceptadas || isset($_GET['solo_aceptadas']) || in_array(strtoupper($filtros['estado']), ['', 'ACEPTADA'], true);
+  $items = [];
+  foreach (reportesConsultarDictamenes($conn, $usuario, $instrumento, 0, $filtros) as $row) {
+    if (empty($row['archivo'])) continue;
+    $row['id'] = (int)$row['id_evidencia'];
+    $row['inst'] = ['id'=>(int)$row['id_instrumento'], 'abbr'=>$row['abreviatura'],
+      'name'=>$row['nombre_completo'], 'tipo'=>$row['tipo_calificacion']];
+    $items[] = $row;
   }
-  $sql .= " ORDER BY e.id_evidencia DESC";
-
-  $stmt = $conn->prepare($sql);
-  if (!$stmt) { return []; }
-  $stmt->bind_param($types, ...$params);
-  $stmt->execute();
-  $res = $stmt->get_result();
-
-  $out = [];
-  while ($res && ($r = $res->fetch_assoc())) {
-    $resRaw = $r['resultado'];
-    if ($resRaw === null || $resRaw === '') continue;
-
-    $approved = false;
-    if ($r['tipo_calificacion'] === 'NUMERICA') {
-      $min = (float)$r['min_cal']; $max = (float)$r['max_cal'];
-      $umbral = $min + NUMERIC_PASS_PCT * ($max - $min);
-      $approved = ((float)$resRaw >= $umbral);
-    } else {
-      // APROBACION (binaria)
-      $approved = ((float)$resRaw >= 1.0);
-    }
-
-    if ($approved && !empty($r['archivo'])) {
-      $out[] = [
-        'id'      => (int)$r['id_evidencia'],
-        'titulo'  => (string)$r['titulo'],
-        'archivo' => (string)$r['archivo'],
-        'inst'    => [
-          'id'   => (int)$r['id_instrumento'],
-          'abbr' => (string)$r['abreviatura'],
-          'name' => (string)$r['nombre_completo'],
-          'tipo' => (string)$r['tipo_calificacion'],
-        ],
-      ];
-    }
-  }
-  $stmt->close();
-  return $out;
+  return $items;
 }
 
 // ---------- Router ----------
@@ -121,7 +67,7 @@ if ($action === 'list') {
   if ($instId <= 0) json_out(['status'=>'error','message'=>'Instrumento inválido'], 400);
   if (!seguridadPuedeAccederInstrumento($conn, $usuarioActual, $instId)) json_out(['status'=>'error','message'=>'No autorizado para este instrumento'], 403);
 
-  $items = get_aprobadas($conn, $instId, $user_id, $user_role);
+  $items = reportesArchivos($conn, $usuarioActual, $instId, false);
 
   // Trae título/abbr del instrumento (aunque no haya aprobadas)
   $instAbbr = ''; $instName = '';
@@ -150,7 +96,7 @@ if ($action === 'zip') {
   $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', $idsStr)), fn($v)=>$v>0)));
   if (empty($ids)) text_out('IDs inválidos', 400);
 
-  $aprobadas = get_aprobadas($conn, $instId, $user_id, $user_role);
+  $aprobadas = reportesArchivos($conn, $usuarioActual, $instId, true);
   if (empty($aprobadas)) text_out('No hay aprobadas', 404);
 
   $idx = [];
@@ -192,8 +138,7 @@ if ($action === 'zip') {
     $ext  = pathinfo($abs, PATHINFO_EXTENSION);
     $name = safe_filename($s['titulo']);
     $entry = sprintf('%03d - %s%s', (int)$s['id'], $name, $ext ? ('.'.$ext) : '');
-    $zip->addFile($abs, $entry);
-    $added++;
+    if ($zip->addFile($abs, $entry)) $added++;
   }
   $zip->close();
 

@@ -40,6 +40,34 @@ $MENU_CONFIG = [
         'roles' => [1, 2]
     ],
     [
+        'titulo' => 'Convocatorias',
+        'seccion' => 'gestion_academica',
+        'ruta' => 'views/admin/convocatorias.php',
+        'icono' => '<path d="M4 4h16v16H4zM8 2v4m8-4v4M4 9h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+        'roles' => [1, 2]
+    ],
+    [
+        'titulo' => 'Periodos Académicos',
+        'seccion' => 'gestion_academica',
+        'ruta' => 'views/admin/periodos-academicos.php',
+        'icono' => '<path d="M4 5h16v15H4zM8 3v4m8-4v4M4 9h16m3 5h-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+        'roles' => [1, 2]
+    ],
+    [
+        'titulo' => 'Criterios de Evaluación',
+        'seccion' => 'gestion_academica',
+        'ruta' => 'views/admin/criterios-evaluacion.php',
+        'icono' => '<path d="M5 4h14v17H5zM8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+        'roles' => [1, 2]
+    ],
+    [
+        'titulo' => 'Fuentes Normativas',
+        'seccion' => 'gestion_academica',
+        'ruta' => 'views/admin/fuentes-normativas.php',
+        'icono' => '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+        'roles' => [1, 2]
+    ],
+    [
         'titulo' => 'Evaluación',
         'ruta' => 'views/evaluador/evaluacion.php',
         'icono' => '<path d="M9 5h6a2 2 0 0 1 2 2v2H7V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8"/><rect x="7" y="9" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 14l1.5 1.5L14.5 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',

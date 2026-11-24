@@ -29,6 +29,7 @@ foreach ($MENU_CONFIG as $item) {
 $rutas_extendidas = [
     'evidencia-detalle.php' => [1, 2, 3, 4],
     'vista-gestion-usuarios.php' => [1, 2],
+    'perfil-usuario.php' => [1, 2],
     'vista-tipos-evidencia.php' => [1, 2],
     // Añade aquí más sub-archivos según necesites
 ];

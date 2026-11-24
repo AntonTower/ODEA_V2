@@ -1,0 +1,162 @@
+{
+    "fase":  5,
+    "estado":  "AUDITADA_CON_LIMITACIONES",
+    "fecha":  "2026-11-23",
+    "entorno":  {
+                    "esquema":  "odea_qa",
+                    "url":  "http://127.0.0.1:8088",
+                    "puerto_db":  3318
+                },
+    "docente":  5,
+    "evaluador":  6,
+    "administrador":  7,
+    "tipos_creados":  [
+                          8,
+                          9
+                      ],
+    "evidencias_creadas":  [
+                               {
+                                   "id":  9,
+                                   "id_docente":  5,
+                                   "id_tipo":  7,
+                                   "titulo":  "QA_ODEA_DO_Capacitacion",
+                                   "archivo":  "evi_badf94db61228bb04d51210845e8423ee12041bf.pdf",
+                                   "sha256":  "051136a23318ca5df188967c150fc1b48a9be45e106b7b46b14ee2e9c06037be",
+                                   "id_trabajo":  1
+                               },
+                               {
+                                   "id":  10,
+                                   "id_docente":  5,
+                                   "id_tipo":  8,
+                                   "titulo":  "QA_ODEA_DO_Articulo",
+                                   "archivo":  "evi_c19c57e90e932ab47f19951704d62861ebc0dcf8.pdf",
+                                   "sha256":  "7983aeaf60abb91cf5fbc9fad4026f02ae1803b48aae848eec1f7561721d85b1",
+                                   "id_trabajo":  2
+                               },
+                               {
+                                   "id":  11,
+                                   "id_docente":  5,
+                                   "id_tipo":  9,
+                                   "titulo":  "QA_ODEA_DO_Congreso",
+                                   "archivo":  "evi_2de61b36795c26e8a1e63336fb9820d0e04cf073.pdf",
+                                   "sha256":  "a47cdd820dc98cdb529e88c443aba6877d6db817c28ef19ac87b5320e2a943ae",
+                                   "id_trabajo":  3
+                               },
+                               {
+                                   "id":  12,
+                                   "id_docente":  5,
+                                   "id_tipo":  7,
+                                   "titulo":  "QA_ODEA_DO_Escaneo_PDF",
+                                   "archivo":  "evi_9fc01761031a24ad90e5f2426961999706dee187.pdf",
+                                   "sha256":  "8f8b177728567c309299aa5debae84733c520cb8b7d6f0dd8754508e2dbe13c0",
+                                   "id_trabajo":  4
+                               },
+                               {
+                                   "id":  13,
+                                   "id_docente":  5,
+                                   "id_tipo":  7,
+                                   "titulo":  "QA_ODEA_DO_Imagen",
+                                   "archivo":  "evi_2a11fdef3c6b2301f6d3d0193138ec6135718a72.png",
+                                   "sha256":  "e0410850b78c0d1d892c6024a2cb4d4e6246a2d78a292628c2518dabbe23ab47",
+                                   "id_trabajo":  5
+                               },
+                               {
+                                   "id":  14,
+                                   "id_docente":  5,
+                                   "id_tipo":  7,
+                                   "titulo":  "QA_ODEA_DO_Incompleta",
+                                   "archivo":  "evi_c64976844d2a1669f0f87b5a0170314aa1524e03.pdf",
+                                   "sha256":  "b3be1026b1101b42098f9b65d84963fd76b01088d6ececa1c76d29357a08f63a",
+                                   "id_trabajo":  6
+                               },
+                               {
+                                   "id":  15,
+                                   "id_docente":  5,
+                                   "id_tipo":  7,
+                                   "titulo":  "QA_ODEA_DO_Duplicada",
+                                   "archivo":  "evi_3cc3fbc73f4848956bc18b16ab80e89a87f6850e.pdf",
+                                   "sha256":  "051136a23318ca5df188967c150fc1b48a9be45e106b7b46b14ee2e9c06037be",
+                                   "id_trabajo":  1
+                               }
+                           ],
+    "revisiones":  [
+                       {
+                           "trabajo":  1,
+                           "id":  1,
+                           "evidencia":  9
+                       },
+                       {
+                           "trabajo":  2,
+                           "id":  2,
+                           "evidencia":  10
+                       }
+                   ],
+    "evaluacion_integracion":  {
+                                   "id":  4,
+                                   "version":  2,
+                                   "estado":  "OBSERVADA",
+                                   "convocatoria":  3,
+                                   "instrumento":  1,
+                                   "historial":  6,
+                                   "evidencia":  10
+                               },
+    "clasificacion":  {
+                          "reglas_activas":  0,
+                          "id_evidencia":  10,
+                          "propuestas":  0
+                      },
+    "reportes":  {
+                     "pdf":  "reporte-docente-snii.pdf",
+                     "zip":  "evidencias-docente-snii.zip",
+                     "contenido_zip":  [
+                                           5
+                                       ]
+                 },
+    "capturas":  [
+                     "DO-01-dashboard.png",
+                     "DO-01-login-antes.png",
+                     "DO-02-perfil-antes.png",
+                     "DO-02-perfil.png",
+                     "DO-03-expediente.png",
+                     "DO-04-carga.png",
+                     "DO-05-atributos-guardados.png",
+                     "DO-05-evidencia-guardada.png",
+                     "DO-05-ExtensionFalsa.png",
+                     "DO-05-Formato.png",
+                     "DO-05-SobreLimite.png",
+                     "DO-05-Vacia.png",
+                     "DO-06-duplicados.png",
+                     "DO-07-procesamiento-error.png",
+                     "DO-07-procesamiento-final.png",
+                     "DO-07-procesamiento-reintento.png",
+                     "DO-07-procesamiento.png",
+                     "DO-08-ocr.png",
+                     "DO-09-metadatos-10-antes.png",
+                     "DO-09-metadatos-10-despues.png",
+                     "DO-09-metadatos-9-antes.png",
+                     "DO-09-metadatos-9-despues.png",
+                     "DO-10-clasificacion.png",
+                     "DO-11-observacion-corregida.png",
+                     "DO-11-observaciones.png",
+                     "DO-12-evaluaciones.png",
+                     "DO-13-historial.png",
+                     "DO-14-reportes.png",
+                     "DO-14-ruta-administrativa-restringida.png",
+                     "DO-15-persistencia.png",
+                     "DO-15-revision-nueva-sesion.png",
+                     "DO-16-admin-articulo.png",
+                     "DO-16-admin-congreso.png",
+                     "DO-16-admin-dashboard.png",
+                     "DO-16-admin-expediente.png",
+                     "DO-16-admin-login-antes.png",
+                     "DO-16-dashboard-rol-1.png",
+                     "DO-16-dashboard-rol-2.png",
+                     "DO-16-dashboard-rol-4.png",
+                     "DO-16-docente-resultado.png",
+                     "DO-16-evaluador-antes.png",
+                     "DO-16-evaluador-dashboard.png",
+                     "DO-16-evaluador-despues.png",
+                     "DO-16-evaluador-login-antes.png",
+                     "DO-16-superadmin-convocatoria.png"
+                 ]
+}

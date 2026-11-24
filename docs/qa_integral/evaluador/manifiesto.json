@@ -1,0 +1,114 @@
+{
+    "fase":  4,
+    "estado":  "REPORTES_VERIFICADOS_SUBCASOS_SEGURIDAD_PENDIENTES",
+    "entorno":  {
+                    "url":  "http://127.0.0.1:8088",
+                    "esquema":  "odea_qa",
+                    "puerto_db":  3318
+                },
+    "docente":  5,
+    "evaluador":  6,
+    "instrumentos_asignados":  [
+                                   1,
+                                   2,
+                                   3
+                               ],
+    "contexto":  {
+                     "instrumento":  1,
+                     "periodo":  3,
+                     "convocatoria":  3,
+                     "version":  2
+                 },
+    "evaluaciones":  [
+                         {
+                             "id":  1,
+                             "evidencia":  6,
+                             "estado":  "OBSERVADA",
+                             "resultado":  null,
+                             "historial":  [
+                                               1
+                                           ]
+                         },
+                         {
+                             "id":  2,
+                             "evidencia":  5,
+                             "estado":  "ACEPTADA",
+                             "resultado":  1,
+                             "historial":  [
+                                               2,
+                                               3
+                                           ]
+                         }
+                     ],
+    "completitud":  {
+                        "evidencia":  8,
+                        "tipo":  7,
+                        "valores_requeridos_capturados":  0,
+                        "archivo":  "evi_f22ba1f2d857bd937c2e5c13cb3b796255551b60.pdf",
+                        "sha256":  "7fed2f938414ce5ab266d508926a718ccac3d0f1901bf19b11aa84451e4b2339"
+                    },
+    "capturas":  [
+                     "EV-01-dashboard.png",
+                     "EV-01-login-antes.png",
+                     "EV-02-instrumentos.png",
+                     "EV-03-busqueda.png",
+                     "EV-03-evidencias-pendientes.png",
+                     "EV-04-visor.png",
+                     "EV-05-completitud-despues.png",
+                     "EV-05-completitud.png",
+                     "EV-05-Incompleta_EV.png",
+                     "EV-05-preparacion-dashboard.png",
+                     "EV-05-preparacion-login-antes.png",
+                     "EV-05-rechazo.png",
+                     "EV-06-docente-dashboard.png",
+                     "EV-06-docente-expediente.png",
+                     "EV-06-docente-login-antes.png",
+                     "EV-06-observacion.png",
+                     "EV-07-evaluacion.png",
+                     "EV-08-historial.png",
+                     "EV-09-resultados.png",
+                     "EV-10-permisos.png",
+                     "EV-11-dashboard.png",
+                     "EV-11-filtro-completas.png",
+                     "EV-12-evaluacion-recuperada.png",
+                     "EV-12-observacion-recuperada.png",
+                     "EV-12-sesion-cerrada.png",
+                     "EV-CORR-cerrada-rechazo.png",
+                     "EV-CORR-cerrada.png",
+                     "EV-CORR-dashboard.png",
+                     "EV-CORR-fuera-de-alcance.png",
+                     "EV-CORR-historial-5.png",
+                     "EV-CORR-incompleta-8.png",
+                     "EV-CORR-listado.png",
+                     "EV-CORR-login-antes.png",
+                     "EV-CORR-observacion-6.png",
+                     "EV-CORR-pdf.png",
+                     "EV-CORR-persistencia.png",
+                     "EV-CORR-seleccion-zip.png"
+                 ],
+    "correccion":  {
+                       "evaluacion_cerrada":  {
+                                                  "id":  3,
+                                                  "id_version":  2,
+                                                  "id_convocatoria":  3,
+                                                  "cerrada":  true,
+                                                  "historial":  [
+                                                                    4,
+                                                                    5
+                                                                ],
+                                                  "evidencia":  7
+                                              },
+                       "reportes":  {
+                                        "version":  2,
+                                        "convocatoria":  3,
+                                        "sha256_documento":  "7fed2f938414ce5ab266d508926a718ccac3d0f1901bf19b11aa84451e4b2339",
+                                        "zip":  "evidencias-snii-v2.zip",
+                                        "evidencias":  [
+                                                           5
+                                                       ],
+                                        "instrumento":  1,
+                                        "pdf":  "reporte-snii-v2.pdf",
+                                        "estado":  "ACEPTADA"
+                                    }
+                   }
+}

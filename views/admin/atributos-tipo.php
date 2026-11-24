@@ -288,4 +288,5 @@ window.confirmEliminarAT = function(){
 })();
 </script>
 
+<?php include __DIR__ . '/admin-ui-styles.php'; ?>
 <?php include COMPONENTS_DIR . '/layout/footer.php'; ?>

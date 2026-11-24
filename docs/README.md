@@ -2,6 +2,18 @@
 
 Gestor de evidencias académicas para la evaluación docente, trabajo de tesina en conjunto con la Benemérita Universidad Autónoma de Puebla (BUAP).
 
+## Guías de operación y validación
+
+- [Informe de validación integral](INFORME_VALIDACION_FINAL_ODEA.md)
+- [Manual del docente](MANUAL_DOCENTE.md)
+- [Manual del evaluador](MANUAL_EVALUADOR.md)
+- [Manual administrativo](MANUAL_ADMINISTRADOR.md)
+- [Documentación técnica](DOCUMENTACION_TECNICA.md)
+- [Dependencias y despliegue](DEPENDENCIAS.md)
+- [Plan de pruebas baseline](PLAN_PRUEBAS_BASELINE.md)
+- [Clasificación documental](CLASIFICACION_DOCUMENTAL.md)
+- [Gestion Academica: convocatorias, versiones y fuentes normativas](GESTION_ACADEMICA.md)
+
 Este sistema web permite a los docentes cargar y organizar documentos probatorios, al mismo tiempo que facilita a los evaluadores e institutos revisar, calificar y administrar los instrumentos de evaluación académica (como SNII, PRODEP y ESDEPED).
 
 ## Arquitectura y Estructura de Directorios

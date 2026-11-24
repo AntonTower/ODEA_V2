@@ -1,0 +1,155 @@
+{
+    "fase":  3,
+    "estado":  "EJECUTADA_CON_SUBCASOS_PENDIENTES",
+    "entorno_qa":  {
+                       "url":  "http://127.0.0.1:8088",
+                       "esquema":  "odea_qa",
+                       "puerto_db":  3318
+                   },
+    "usuarios":  {
+                     "administrador":  7,
+                     "docente":  5,
+                     "evaluador":  6
+                 },
+    "tipo":  {
+                 "id":  7,
+                 "nombre":  "QA_ODEA_Constancia de capacitación",
+                 "instrumentos":  [
+                                      1,
+                                      2,
+                                      3
+                                  ],
+                 "atributos":  [
+                                   {
+                                       "id":  9,
+                                       "slug":  "nombre_actividad",
+                                       "requerido":  true
+                                   },
+                                   {
+                                       "id":  10,
+                                       "slug":  "institucion_emisora",
+                                       "requerido":  true
+                                   },
+                                   {
+                                       "id":  11,
+                                       "slug":  "fecha_emision",
+                                       "requerido":  true
+                                   },
+                                   {
+                                       "id":  12,
+                                       "slug":  "horas",
+                                       "requerido":  false
+                                   },
+                                   {
+                                       "id":  13,
+                                       "slug":  "observaciones",
+                                       "requerido":  false
+                                   }
+                               ]
+             },
+    "evidencias":  [
+                       {
+                           "id":  5,
+                           "id_docente":  5,
+                           "id_tipo":  7,
+                           "archivo":  "evi_7e57f52ea4f6a7e451a0a49e4adee7afc883bb4d.pdf",
+                           "mime":  "application/pdf",
+                           "bytes":  1659,
+                           "sha256":  "7fed2f938414ce5ab266d508926a718ccac3d0f1901bf19b11aa84451e4b2339",
+                           "atributos_capturados":  [
+                                                        9,
+                                                        10,
+                                                        11
+                                                    ]
+                       },
+                       {
+                           "id":  6,
+                           "id_docente":  5,
+                           "id_tipo":  7,
+                           "archivo":  "evi_58aef7cc0c07c14534d6de1562a3c085b2cdf5ae.pdf",
+                           "mime":  "application/pdf",
+                           "bytes":  1659,
+                           "sha256":  "7fed2f938414ce5ab266d508926a718ccac3d0f1901bf19b11aa84451e4b2339",
+                           "atributos_capturados":  [
+                                                        9,
+                                                        10,
+                                                        11
+                                                    ]
+                       },
+                       {
+                           "id":  7,
+                           "id_docente":  5,
+                           "id_tipo":  7,
+                           "archivo":  "evi_3d10392ebf6bcf15704260101560dd7080cf45f8.pdf",
+                           "mime":  "application/pdf",
+                           "bytes":  1659,
+                           "sha256":  "7fed2f938414ce5ab266d508926a718ccac3d0f1901bf19b11aa84451e4b2339",
+                           "atributos_capturados":  [
+                                                        9,
+                                                        10,
+                                                        11
+                                                    ]
+                       }
+                   ],
+    "evaluacion":  {
+                       "evidencia_recomendada":  5,
+                       "id_evaluador":  6,
+                       "instrumentos":  [
+                                            1,
+                                            2,
+                                            3
+                                        ],
+                       "convocatorias":  [
+                                             3,
+                                             4,
+                                             5
+                                         ],
+                       "versiones":  [
+                                         2,
+                                         3,
+                                         4
+                                     ]
+                   },
+    "capturas":  [
+                     "AD-01-dashboard.png",
+                     "AD-01-login-antes.png",
+                     "AD-01-permisos-usuarios.png",
+                     "AD-02-busqueda-docente.png",
+                     "AD-02-email-invalido.png",
+                     "AD-02-perfil-despues.png",
+                     "AD-02-usuarios-antes.png",
+                     "AD-02-usuarios.png",
+                     "AD-03-filtro-instrumento.png",
+                     "AD-03-instrumento-despues.png",
+                     "AD-03-instrumentos-antes.png",
+                     "AD-03-instrumentos.png",
+                     "AD-03-rango-invalido.png",
+                     "AD-03-tipos-evidencia.png",
+                     "AD-04-atributos-antes.png",
+                     "AD-04-atributos.png",
+                     "AD-04-duplicado.png",
+                     "AD-05-convocatorias-antes.png",
+                     "AD-05-convocatorias.png",
+                     "AD-05-periodo-despues.png",
+                     "AD-05-restriccion.png",
+                     "AD-06-criterios-antes.png",
+                     "AD-06-criterios.png",
+                     "AD-06-fuentes.png",
+                     "AD-07-atributos-antes.png",
+                     "AD-07-carga.png",
+                     "AD-07-evidencia-persistente.png",
+                     "AD-08-Duplicada.png",
+                     "AD-08-ExcedeLimite.png",
+                     "AD-08-ExtensionIncorrecta.png",
+                     "AD-08-listado-evidencias.png",
+                     "AD-08-obligatorios.png",
+                     "AD-09-filtro-resultado.png",
+                     "AD-09-reportes.png",
+                     "AD-10-asignacion-antes.png",
+                     "AD-10-asignacion-despues.png",
+                     "AD-10-seguridad.png",
+                     "AD-11-expediente-docente.png",
+                     "AD-11-expediente-persistente.png",
+                     "AD-12-sesion-cerrada.png"
+                 ]
+}

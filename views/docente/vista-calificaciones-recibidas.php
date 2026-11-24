@@ -22,8 +22,15 @@ require_once __DIR__ . '/../../config/paths.php';
 require_once CONFIG_DIR . '/conexion.php';
 require_once CONFIG_DIR . '/validacion.php';
 
-$user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
+require_once CONFIG_DIR . '/seguridad.php';
+require_once CONFIG_DIR . '/reportes.php';
+$usuarioActual = seguridadUsuarioActual($conn);
+$user_id = (int)$usuarioActual['id_usuario'];
+$user_role = (int)$usuarioActual['rol'];
+if (!$user_id || !in_array($user_role, [1,2,3,4], true)) {
+  http_response_code(403);
+  exit;
+}
 
 $instFilter = isset($_GET['instrumento']) ? (int)$_GET['instrumento'] : 0;
 $estado     = isset($_GET['estado']) ? trim($_GET['estado']) : 'todas';
@@ -61,6 +68,14 @@ if ($user_role === 4) {
   $types .= 'i'; $params[] = $user_id;
 }
 
+if ($user_role === 3) {
+  $sqlE .= " AND EXISTS (SELECT 1 FROM instrumento_tipo_evidencia ite
+      JOIN instrumentos i ON i.id_instrumento=ite.id_instrumento AND i.activo=1
+      JOIN evaluador_instrumento ei ON ei.id_instrumento=i.id_instrumento
+      WHERE ite.id_tipo_evidencia=e.id_tipo_evidencia AND ei.id_evaluador=?)";
+  $params[] = $user_id;
+  $types .= 'i';
+}
 $sqlE .= " ORDER BY e.id_evidencia DESC";
 
 $stmtE = $conn->prepare($sqlE);
@@ -114,18 +129,10 @@ if (!empty($ids)) {
   $sqlI = "SELECT
               e.id_evidencia,
               i.id_instrumento, i.abreviatura, i.nombre_completo,
-              i.tipo_calificacion, COALESCE(i.min_calificacion,0) AS min_cal, COALESCE(i.max_calificacion,10) AS max_cal,
-              COALESCE(ev.resultado,ce.resultado) AS resultado, COALESCE(ev.comentario,ce.comentario) AS comentario,
-              ce.calificado_en, ev.id_estado, ee.nombre AS estado_nombre, ev.id_version
+              i.tipo_calificacion, COALESCE(i.min_calificacion,0) AS min_cal, COALESCE(i.max_calificacion,10) AS max_cal
             FROM evidencias e
             JOIN instrumento_tipo_evidencia ite ON ite.id_tipo_evidencia = e.id_tipo_evidencia
             JOIN instrumentos i ON i.id_instrumento = ite.id_instrumento AND i.activo = 1
-            LEFT JOIN calificacion_evidencia ce
-                  ON ce.id_evidencia = e.id_evidencia
-                 AND ce.id_instrumento = i.id_instrumento
-            LEFT JOIN evaluaciones_versionadas ev
-                  ON ev.id_evidencia=e.id_evidencia AND ev.id_instrumento=i.id_instrumento AND ev.id_version IS NULL
-            LEFT JOIN estados_evaluacion ee ON ee.id_estado=ev.id_estado
             WHERE e.id_evidencia IN ($placeholders)";
 
   if ($instFilter > 0) {
@@ -133,6 +140,15 @@ if (!empty($ids)) {
     $types2 .= 'i'; $params2[] = $instFilter;
   }
 
+  if ($user_role === 3) {
+    $sqlI .= ' AND EXISTS (SELECT 1 FROM evaluador_instrumento ei
+      WHERE ei.id_instrumento=i.id_instrumento AND ei.id_evaluador=?)';
+    $types2 .= 'i'; $params2[] = $user_id;
+  }
+  $dictamenes = [];
+  foreach (reportesConsultarDictamenes($conn, $usuarioActual, $instFilter) as $dictamen) {
+    $dictamenes[$dictamen['id_evidencia']][$dictamen['id_instrumento']][] = $dictamen;
+  }
   $stmtI = $conn->prepare($sqlI);
   $stmtI->bind_param($types2, ...$params2);
   $stmtI->execute();
@@ -142,7 +158,11 @@ if (!empty($ids)) {
   if ($resI && $resI->num_rows > 0) {
     while ($r = $resI->fetch_assoc()) {
       $evi = (int)$r['id_evidencia'];
-      $map[$evi][] = $r;
+      $vigentes = $dictamenes[$evi][$r['id_instrumento']] ?? [];
+      if (!$vigentes) $map[$evi][] = $r + ['resultado'=>null];
+      foreach ($vigentes as $vigente) {
+        $map[$evi][] = $vigente + ['estado_nombre'=>$vigente['id_version'] ? $vigente['estado'] : ''];
+      }
     }
   }
   $stmtI->close();
@@ -183,6 +203,12 @@ if (!empty($ids)) {
         $isNum = ($inst['tipo_calificacion'] === 'NUMERICA');
         $resRaw = $inst['resultado'];
         $hasRes = ($resRaw !== null && $resRaw !== '');
+        if (!empty($inst['id_version'])) {
+          $codigo = $inst['codigo_estado'];
+          if (($estado === 'aprobadas' && $codigo === 'ACEPTADA') ||
+              ($estado === 'noaprobadas' && $codigo === 'RECHAZADA')) { $includeRow = true; break; }
+          continue;
+        }
         if (!$hasRes) {
           if ($estado === 'sin') { $includeRow = true; break; }
           continue;
@@ -219,7 +245,10 @@ if (!empty($ids)) {
       $cls   = 'secondary';
       $label = 'Sin calificar';
 
-      if ($hasRes) {
+      if (!empty($inst['id_version'])) {
+        $label = 'v' . $inst['codigo_version'];
+        $cls = $inst['codigo_estado'] === 'ACEPTADA' ? 'badge-ok' : 'badge-warn';
+      } elseif ($hasRes) {
         $resNum = (float)$resRaw;
         if ($isNum) {
           $min = (float)$inst['min_cal']; $max = (float)$inst['max_cal'];
@@ -236,7 +265,7 @@ if (!empty($ids)) {
       }
 
       $estadoRevision = (string)($inst['estado_nombre'] ?? '');
-      $click = ($hasRes || $estadoRevision!=='') ? 'onclick="openVerCalificacion('.$id.','.$iid.')"' : '';
+      $click = ($hasRes || $estadoRevision!=='') ? 'onclick="openVerCalificacion('.$id.','.$iid.','.(int)($inst['id_version']??0).')"' : '';
       $badges[] = '<span class="badge clickable '.$cls.'" '.$click.' title="Instrumento: '.htmlspecialchars($abbr).'">'.
                   htmlspecialchars($abbr).': '.htmlspecialchars($label).($estadoRevision!==''?' · '.htmlspecialchars($estadoRevision):'').'</span>';
     }

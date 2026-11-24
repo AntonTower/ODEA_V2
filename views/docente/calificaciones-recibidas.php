@@ -19,6 +19,20 @@ require_once __DIR__ . '/../../config/paths.php';
 
 require_once CONFIG_DIR . '/validacion.php';
 require_once CONFIG_DIR . '/conexion.php';
+require_once CONFIG_DIR . '/seguridad.php';
+require_once CONFIG_DIR . '/reportes.php';
+$reportesUsuario = seguridadUsuarioActual($conn);
+$reportesContextos = [];
+foreach (reportesConsultarDictamenes($conn, $reportesUsuario) as $dictamen) {
+    if (!$dictamen['id_version']) continue;
+    $reportesContextos[$dictamen['id_version']] = [
+        'instrumento'=>(int)$dictamen['id_instrumento'],
+        'convocatoria'=>(int)$dictamen['id_convocatoria'],
+        'version'=>(int)$dictamen['id_version'],
+        'nombre'=>$dictamen['convocatoria'],
+        'codigo'=>$dictamen['codigo_version'],
+    ];
+}
 
 include COMPONENTS_DIR . '/layout/header.php';
 include COMPONENTS_DIR . '/layout/left-menu.php';
@@ -31,7 +45,9 @@ $instrumentos = [];
 $qI = "SELECT id_instrumento, abreviatura, nombre_completo, tipo_calificacion, min_calificacion, max_calificacion
        FROM instrumentos WHERE activo = 1 ORDER BY id_instrumento";
 if ($rsI = mysqli_query($conn, $qI)) {
-  while ($r = mysqli_fetch_assoc($rsI)) $instrumentos[] = $r;
+  while ($r = mysqli_fetch_assoc($rsI)) {
+    if (seguridadPuedeAccederInstrumento($conn, $reportesUsuario, (int)$r['id_instrumento'])) $instrumentos[] = $r;
+  }
 }
 ?>
 <style>
@@ -72,6 +88,23 @@ if ($rsI = mysqli_query($conn, $qI)) {
         <option value="aprobadas">Aprobadas</option>
         <option value="noaprobadas">No aprobadas</option>
         <option value="sin">Sin calificar</option>
+      </select>
+
+      <select id="reportConvocatoria" class="input" aria-label="Convocatoria del reporte">
+        <option value="">Todas las convocatorias</option>
+      </select>
+      <select id="reportVersion" class="input" aria-label="Versión del reporte">
+        <option value="">Todas las versiones</option>
+      </select>
+      <select id="reportEstado" class="input" aria-label="Estado del reporte">
+        <option value="">Aceptadas y aprobadas legadas</option>
+        <option value="ACEPTADA">Aceptadas versionadas</option>
+        <option value="OBSERVADA">Observadas</option>
+        <option value="RECHAZADA">Rechazadas</option>
+        <option value="EN_REVISION">En revisión</option>
+        <option value="PENDIENTE_REVISION">Pendientes de revisión</option>
+        <option value="REENVIADA_REVISION">Reenviadas para revisión</option>
+        <option value="LEGADA">Legadas</option>
       </select>
 
       <!-- Botón PDF (abre en nueva pestaña) -->
@@ -274,9 +307,36 @@ function initDTCR(){
   }
 }
 
+const reportContextos = <?= json_encode(array_values($reportesContextos), JSON_HEX_TAG | JSON_INVALID_UTF8_SUBSTITUTE) ?>;
+const reportCall = document.getElementById('reportConvocatoria');
+const reportVersion = document.getElementById('reportVersion');
+function reportCargarContextos(cambiarInstrumento) {
+  const rows = reportContextos.filter(row => row.instrumento === currentInstrumento);
+  if (cambiarInstrumento) {
+    reportCall.options.length = 1;
+    const convocatorias = new Map(rows.map(row => [row.convocatoria, row.nombre]));
+    for (const [id, nombre] of convocatorias) reportCall.add(new Option(nombre, id));
+  }
+  reportVersion.options.length = 1;
+  for (const row of rows) {
+    if (!reportCall.value || Number(reportCall.value) === row.convocatoria) {
+      reportVersion.add(new Option(row.nombre + ' · v' + row.codigo, row.version));
+    }
+  }
+}
+reportCall.addEventListener('change', () => reportCargarContextos(false));
+function reportParametros() {
+  return new URLSearchParams({
+    convocatoria: reportCall.value,
+    version: reportVersion.value,
+    estado: document.getElementById('reportEstado').value,
+  }).toString();
+}
+
 // Filtros
 document.getElementById('filterInstrumento').addEventListener('change', function(){
   currentInstrumento = parseInt(this.value || '0', 10) || 0;
+  reportCargarContextos(true);
   const disable = currentInstrumento <= 0;
   document.getElementById('btnGenerarPDF').disabled = disable;
   document.getElementById('btnAbrirDescarga').disabled = disable;
@@ -294,7 +354,7 @@ document.getElementById('btnGenerarPDF').addEventListener('click', function(){
     if (window.Swal) Swal.fire({icon:'info', title:'Selecciona un instrumento', text:'Elige un instrumento para generar el PDF.'});
     return;
   }
-  const url = '<?= BASE_URL ?>/views/docente/calificaciones-pdf.php?instrumento=' + encodeURIComponent(currentInstrumento);
+  const url = '<?= BASE_URL ?>/views/docente/calificaciones-pdf.php?instrumento=' + encodeURIComponent(currentInstrumento) + '&' + reportParametros();
   window.open(url, '_blank');
 });
 
@@ -307,7 +367,7 @@ document.getElementById('btnAbrirDescarga').addEventListener('click', function()
   const sel = document.getElementById('filterInstrumento');
   const instName = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : '';
   if (window.__openDescModal) {
-    window.__openDescModal(currentInstrumento, instName);
+    window.__openDescModal(currentInstrumento, instName, reportParametros());
   }
 });
 
@@ -315,7 +375,7 @@ document.getElementById('btnAbrirDescarga').addEventListener('click', function()
 loadTablaCR();
 
 /* ==== Abrir modal con una calificación específica ==== */
-window.openVerCalificacion = function(eviId, instId){
+window.openVerCalificacion = function(eviId, instId, versionId = 0){
   // Limpia UI
   document.getElementById('califInst').textContent = '—';
   document.getElementById('califTipo').textContent = '—';
@@ -344,6 +404,12 @@ window.openVerCalificacion = function(eviId, instId){
         return;
       }
 
+      const contexto = versionId ? (row.evaluaciones_versionadas || []).find(v => Number(v.id_version) === Number(versionId)) : null;
+      if (versionId && !contexto) {
+        if (window.Swal) Swal.fire({title:'Consulta el historial para esta versión', icon:'info'});
+        return;
+      }
+      if (contexto) Object.assign(row, contexto);
       const esNum = Number(row.es_numerico) === 1;
       const min   = Number(row.cal_min ?? 0);
       const max   = Number(row.cal_max ?? (esNum ? 10 : 1));
@@ -353,12 +419,16 @@ window.openVerCalificacion = function(eviId, instId){
       document.getElementById('califInst').textContent = (row.abreviatura || 'INS') + ' — ' + (row.nombre_completo || '');
       document.getElementById('califTipo').textContent = esNum ? 'NUMÉRICA' : 'APROBACIÓN';
       document.getElementById('califComentario').textContent = com || '—';
-      document.getElementById('califEstadoRevision').textContent = row.estado_nombre || 'Sin revisión registrada';
+      document.getElementById('califEstadoRevision').textContent = row.estado_codigo || row.estado_nombre || 'Sin revisión registrada';
       document.getElementById('califFecha').textContent = (row.calificado_en || '—');
       document.getElementById('califAct').textContent = (row.actualizado_en || '—');
       document.getElementById('califResultado').textContent = (res === null || typeof res === 'undefined') ? 'Sin calificar' : res;
 
-      if (esNum) {
+      if (contexto) {
+        const badge = document.getElementById('califBadge');
+        badge.textContent = row.estado_codigo || 'Sin estado';
+        badge.className = 'badge ' + (row.estado_codigo === 'ACEPTADA' ? 'badge-ok' : 'badge-warn');
+      } else if (esNum) {
         const umbral = min + NUMERIC_PASS_PCT * (max - min);
         document.getElementById('rowRango').style.display = '';
         document.getElementById('califRango').textContent = `${min} – ${max}`;

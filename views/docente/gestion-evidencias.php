@@ -48,10 +48,274 @@ if ($rsT = mysqli_query($conn, $qT)) {
   while ($r = mysqli_fetch_assoc($rsT)) $tipos[] = $r;
 }
 ?>
-<section class="space-y-6">
-  <header class="flex items-center justify-between" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+<style>
+  /* =========================================================================
+     Gestión de evidencias
+     - El layout responde al ancho del contenedor (container queries), por lo
+       que se adapta solo cuando el menú lateral se abre o se colapsa.
+     - La tabla la inyecta AJAX; sus estilos se anclan a #tablaEvidencias y
+       cubren DataTables 2 (dt-*) y su extensión Responsive (dtr-*).
+     ========================================================================= */
+
+  .evidencias-page {
+    --ev-gap: clamp(12px, 1.6vw, 24px);
+    --ev-pad: clamp(14px, 1.5vw, 20px);
+    --ev-line: var(--border, #e4e4e7);
+    --ev-surface: var(--card, #ffffff);
+    --ev-muted: var(--muted-foreground, #71717a);
+    --ev-accent: var(--primary, #2563eb);
+    --ev-radius: var(--radius, 12px);
+    --ev-radius-sm: var(--radius-sm, 8px);
+    --ev-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+
+    display: grid;
+    align-content: start;
+    gap: var(--ev-gap);
+    width: 100%;
+    max-width: 1680px;
+    min-width: 0;
+    margin-inline: auto;
+    container-type: inline-size;
+    container-name: evidencias;
+  }
+  .evidencias-page > * { min-width: 0; margin: 0; }
+
+  /* ---------- Encabezado ---------- */
+  .evidencias-page .dashboard-hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 20px;
+    padding: 4px 0 2px;
+  }
+  .evidencias-page .dashboard-hero > div { flex: 1 1 280px; min-width: 0; }
+  .evidencias-page .dashboard-hero h1 {
+    margin: 0 0 4px;
+    font-size: clamp(1.35rem, 1.1rem + 1vw, 1.85rem);
+    line-height: 1.2;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+  }
+  .evidencias-page .dashboard-eyebrow {
+    margin: 0 0 4px;
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--ev-accent);
+  }
+  .evidencias-page .dashboard-hero .text-muted-foreground {
+    max-width: 68ch;
+    margin: 0;
+    font-size: .9rem;
+    line-height: 1.5;
+    color: var(--ev-muted);
+  }
+  .evidencias-page .dashboard-hero > .btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+  }
+
+  /* ---------- Tarjetas ---------- */
+  .evidencias-page .card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border: 1px solid var(--ev-line);
+    border-radius: var(--ev-radius);
+    background: var(--ev-surface);
+    box-shadow: var(--ev-shadow);
+  }
+  .evidencias-page .card-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: var(--ev-pad);
+  }
+
+  /* ---------- Barra de herramientas ---------- */
+  .evidencias-page .evidencias-toolbar .card-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: end;
+    gap: 12px 16px;
+  }
+  .evidencias-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .evidencias-field > label { font-size: .8rem; font-weight: 600; }
+  .evidencias-search-row { display: flex; align-items: center; gap: 8px; }
+  .evidencias-search-row .input { flex: 1 1 auto; min-width: 0; }
+  .evidencias-search-row .btn { flex: none; }
+  .evidencias-field .input,
+  .evidencias-field .btn { min-height: 42px; }
+  .evidencias-field select.input { width: 100%; }
+
+  /* ---------- Tabla (contenido inyectado por AJAX) ---------- */
+  #tablaEvidencias .card-content { overflow-x: auto; }
+  #tablaEvidencias > .card-content > p { padding: 24px 8px; text-align: center; color: var(--ev-muted); }
+
+  #tablaEvidencias table.dataTable { width: 100%; border-collapse: collapse; }
+  #tablaEvidencias table.dataTable thead th {
+    padding-block: 10px;
+    padding-inline-start: 12px;
+    border-bottom: 1px solid var(--ev-line);
+    background: var(--muted, var(--ev-surface));
+    font-size: .74rem;
+    font-weight: 600;
+    text-align: start;
+    white-space: nowrap;
+    color: var(--ev-muted);
+  }
+  #tablaEvidencias table.dataTable tbody td {
+    padding: 10px 12px;
+    border: 0;
+    border-bottom: 1px solid var(--ev-line);
+    box-shadow: none;
+    font-size: .85rem;
+    line-height: 1.4;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+  }
+  #tablaEvidencias table.dataTable tbody tr:last-child td { border-bottom: 0; }
+  #tablaEvidencias table.dataTable tbody td.dt-empty {
+    padding: 36px 12px;
+    text-align: center;
+    color: var(--ev-muted);
+  }
+  #tablaEvidencias table.dataTable tbody td.dtr-control { width: 40px; }
+  #tablaEvidencias table.dataTable tbody td .btn {
+    min-height: 32px;
+    margin: 2px 4px 2px 0;
+    padding: 4px 10px;
+    font-size: .78rem;
+    white-space: nowrap;
+  }
+  @media (hover: hover) {
+    #tablaEvidencias table.dataTable tbody tr:hover > td {
+      background: color-mix(in srgb, var(--ev-accent) 5%, transparent);
+    }
+  }
+
+  /* Filas expandidas (Responsive): lista de etiqueta y valor */
+  #tablaEvidencias table.dataTable tbody tr.child td.child { padding: 0 12px 8px 12px; }
+  #tablaEvidencias ul.dtr-details { display: grid; margin: 0; padding: 0; list-style: none; }
+  #tablaEvidencias ul.dtr-details > li {
+    display: grid;
+    grid-template-columns: minmax(90px, 34%) minmax(0, 1fr);
+    gap: 4px 12px;
+    padding: 9px 0;
+    border-top: 1px solid var(--ev-line);
+  }
+  #tablaEvidencias ul.dtr-details > li:first-child { border-top: 0; }
+  #tablaEvidencias ul.dtr-details .dtr-title {
+    min-width: 0;
+    font-size: .74rem;
+    font-weight: 600;
+    color: var(--ev-muted);
+  }
+  #tablaEvidencias ul.dtr-details .dtr-data { min-width: 0; font-size: .85rem; overflow-wrap: anywhere; }
+
+  /* Mostrar, información y paginación */
+  #tablaEvidencias .dt-layout-row:not(.dt-layout-table),
+  #tablaEvidencias .dt-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    margin-top: 14px;
+    font-size: .82rem;
+    color: var(--ev-muted);
+  }
+  #tablaEvidencias .dt-length { display: flex; align-items: center; gap: 8px; }
+  #tablaEvidencias .dt-length select {
+    min-height: 36px;
+    padding: 4px 8px;
+    border: 1px solid var(--ev-line);
+    border-radius: var(--ev-radius-sm);
+    background-color: var(--ev-surface);
+    color: inherit;
+  }
+  #tablaEvidencias .dt-paging nav { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+  #tablaEvidencias .dt-paging .dt-paging-button {
+    min-width: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 4px 10px;
+    border: 1px solid var(--ev-line);
+    border-radius: var(--ev-radius-sm);
+    background: var(--ev-surface);
+    font-size: .8rem;
+    color: inherit;
+    transition: border-color .15s ease, background-color .15s ease;
+  }
+  #tablaEvidencias .dt-paging .dt-paging-button.current,
+  #tablaEvidencias .dt-paging .dt-paging-button.current:hover {
+    border-color: var(--ev-accent);
+    background: color-mix(in srgb, var(--ev-accent) 12%, var(--ev-surface));
+    color: var(--ev-accent);
+    font-weight: 600;
+  }
+  #tablaEvidencias .dt-paging .dt-paging-button.disabled,
+  #tablaEvidencias .dt-paging .dt-paging-button.disabled:hover {
+    opacity: .45;
+    cursor: not-allowed;
+    background: var(--ev-surface);
+  }
+  @media (hover: hover) {
+    #tablaEvidencias .dt-paging .dt-paging-button:not(.current):not(.disabled):hover { border-color: var(--ev-accent); }
+  }
+
+  /* ---------- Diálogo de ocultar ---------- */
+  #dlgEliminarEvi .dialog-card { width: min(100%, 520px); max-height: calc(100dvh - 24px); overflow: auto; }
+  #dlgEliminarEvi .dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  @media (max-width: 479px) {
+    #dlgEliminarEvi .dialog-actions .btn { flex: 1 1 100%; min-height: 44px; }
+  }
+
+  /* ---------- Accesibilidad ---------- */
+  .evidencias-page :is(a, button, .btn, select, input, [tabindex]):focus-visible {
+    outline: 2px solid var(--ring, var(--ev-accent));
+    outline-offset: 2px;
+  }
+  @media (pointer: coarse) {
+    .evidencias-page .btn,
+    .evidencias-page .dt-paging .dt-paging-button { min-height: 44px; }
+    #tablaEvidencias table.dataTable tbody td .btn { min-height: 40px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .evidencias-page * { transition: none !important; }
+  }
+
+  /* =========================================================================
+     Puntos de quiebre según el ancho del contenedor
+     ========================================================================= */
+
+  /* Móvil: botón principal a ancho completo, pie de tabla centrado y apilado */
+  @container evidencias (max-width: 559px) {
+    .evidencias-page .dashboard-hero > .btn { flex: 1 1 100%; }
+    #tablaEvidencias .dt-layout-row:not(.dt-layout-table),
+    #tablaEvidencias .dt-bottom { flex-direction: column; align-items: center; text-align: center; }
+    #tablaEvidencias .dt-paging .dt-paging-button.first,
+    #tablaEvidencias .dt-paging .dt-paging-button.last { display: none; }
+  }
+
+  /* Tableta: búsqueda y filtro en una misma fila */
+  @container evidencias (min-width: 600px) {
+    .evidencias-page .evidencias-toolbar .card-content { grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); }
+  }
+
+  /* Escritorio: filtro más amplio */
+  @container evidencias (min-width: 1000px) {
+    .evidencias-page .evidencias-toolbar .card-content { grid-template-columns: minmax(0, 1fr) 340px; }
+  }
+</style>
+
+<section class="evidencias-page" aria-labelledby="evidencias-titulo">
+  <header class="dashboard-hero">
     <div>
-      <h1 class="text-2xl font-semibold">Gestión de evidencias</h1>
+      <p class="dashboard-eyebrow">ODEA · Evidencias</p>
+      <h1 id="evidencias-titulo">Gestión de evidencias</h1>
       <p class="text-muted-foreground">
         <?php if ($user_role === 3): ?>Consulta las evidencias de los instrumentos que tienes asignados.
         <?php else: ?>Administra evidencias; los docentes solo pueden modificar las propias. Archivos PDF o imágenes (máx. 10 MB).<?php endif; ?>
@@ -66,16 +330,20 @@ if ($rsT = mysqli_query($conn, $qT)) {
   </header>
 
   <!-- Barra de herramientas -->
-  <div class="card">
-    <div class="card-content" style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
-      <div style="max-width:520px; width:100%; display:flex; align-items:center; gap:8px;">
-        <input id="search" class="input" placeholder="Buscar por título, docente o tipo…" aria-label="Buscar" />
-        <button id="clearSearch" class="btn" type="button" title="Limpiar búsqueda">Limpiar</button>
+  <div class="card evidencias-toolbar">
+    <div class="card-content">
+      <div class="evidencias-field">
+        <label for="search">Buscar</label>
+        <div class="evidencias-search-row">
+          <input id="search" class="input" placeholder="Buscar por título, docente o tipo…" autocomplete="off" />
+          <button id="clearSearch" class="btn" type="button" title="Limpiar búsqueda">Limpiar</button>
+        </div>
       </div>
 
       <!-- Filtro por tipo de evidencia (servidor) -->
-      <div>
-        <select id="filterTipo" class="input select-white" style="min-width:260px;">
+      <div class="evidencias-field">
+        <label for="filterTipo">Tipo de evidencia</label>
+        <select id="filterTipo" class="input select-white">
           <option value="">Tipo: Todos</option>
           <?php foreach ($tipos as $t): ?>
             <option value="<?= (int)$t['id_tipo_evidencia'] ?>">
@@ -88,7 +356,7 @@ if ($rsT = mysqli_query($conn, $qT)) {
   </div>
 
   <!-- Tabla -->
-  <div id="tablaEvidencias" class="card">
+  <div id="tablaEvidencias" class="card" aria-live="polite">
     <div class="card-content">
       <p class="text-muted-foreground">Cargando…</p>
     </div>

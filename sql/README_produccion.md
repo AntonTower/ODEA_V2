@@ -13,18 +13,9 @@ Este es el volcado vigente para instalar el Gestor de Evidencias. Contiene el es
 
 Las evidencias del volcado guardan nombres de archivo, pero los documentos no están incluidos en el SQL. Los archivos físicos deben estar disponibles en `uploads/files/`.
 
-## Cuentas iniciales
+## Usuarios de muestra y manejo seguro
 
-Las cuatro cuentas están activas y comparten la contraseña de demostración `#Luis0605050#`:
-
-| Rol | Correo |
-|---|---|
-| Super Usuario | `anton.tower21@gmail.com` |
-| Administrador | `anton.tower21administrador@gmail.com` |
-| Docente | `anton.tower21docente@gmail.com` |
-| Evaluador | `anton.tower21evaluador@gmail.com` |
-
-Las contraseñas se almacenan como hashes bcrypt. Cambia las credenciales antes de usar una instalación accesible desde Internet.
+El dump heredado contiene cuentas activas con información identificable y hashes de contraseñas compartidas. Está limitado a laboratorio local aislado. No lo publiques ni lo importes en producción sin sanear los registros y crear credenciales individuales nuevas. Los datos de carga no sustituyen la configuración institucional.
 
 ## Importación en XAMPP/phpMyAdmin
 
@@ -43,3 +34,9 @@ Para agregar los 15 tipos y 45 evidencias ficticias de la demostración, sigue [
 ## Esquemas anteriores
 
 Los archivos `gestor_evidencia.sql`, `gestor_evidencia_asignaciones.sql` y `gestor_evidencia_produccion.sql` fueron reemplazados por v2. Usa únicamente `gestor_evidencia_produccion_v2.sql` para una instalación nueva.
+
+## Migraciones posteriores y variables privadas
+
+El esquema v2 solo instala el modelo original. En staging con respaldo verificado, aplica en orden las migraciones sql/migrations/20261118_integridad_documental.sql a 20261123_motor_clasificacion_multiinstrumento.sql. La instancia local llamada gestor_evidencia_produccion inspeccionada durante la validación no tiene instaladas esas tablas. No aplicar en producción sin aprobación y ensayo de restauración.
+
+La conexión acepta GESTOR_DB_HOST, GESTOR_DB_NAME, GESTOR_DB_USER, GESTOR_DB_PASSWORD y GESTOR_DB_PORT. Inyéctalas en el entorno del servicio web, no en archivos versionados. Los valores por defecto solo son para XAMPP local aislado.

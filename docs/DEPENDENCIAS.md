@@ -1,5 +1,13 @@
 # Dependencias e instalacion
 
+## Verificación local de 2026-11-18
+
+En este checkout se ejecutaron todas las pruebas con PHP CLI 8.0.30 y MariaDB 10.4.32. Estuvieron activas `mysqli`, `fileinfo`, `mbstring` y `zip`. Esto verifica el entorno local, no garantiza otros servidores. La app base requiere `mysqli`; archivos requieren `fileinfo`; texto UTF-8 usa `mbstring`; ZIP usa `zip`; el PDF requiere `fpdf/fpdf.php`. El procesador OCR local depende además de los ejecutables configurados en `docs/PROCESAMIENTO_DOCUMENTAL.md`.
+
+Configura `GESTOR_DB_HOST`, `GESTOR_DB_NAME`, `GESTOR_DB_USER`, `GESTOR_DB_PASSWORD` y `GESTOR_DB_PORT` como variables privadas del proceso de Apache/PHP. La configuración local conserva defaults de XAMPP; jamás despliegues los defaults `root` sin contraseña. No se usa archivo `.env` automáticamente.
+
+Para validar: `C:\xampp\php\php.exe tests\autenticacion.php` y repetir para cada archivo PHP bajo `tests/`. Todas las suites vigentes están listadas con resultados en [el informe final](INFORME_VALIDACION_FINAL_ODEA.md).
+
 ## Requisitos generales
 
 Para montar el proyecto se necesita un servidor web compatible con PHP y MySQL/MariaDB.

@@ -38,7 +38,63 @@ if($stats['historial_disponible']){
  $st->bind_param('i',$evaluadorId);$st->execute();$history=$st->get_result()->fetch_all(MYSQLI_ASSOC);$st->close();
 }
 ?>
-<section class="space-y-6">
+<style>
+  .dashboard-view-evaluator { display: grid; gap: clamp(18px, 2.4vw, 28px); }
+  .dashboard-view-evaluator .dashboard-hero { align-items: center; padding-bottom: 2px; }
+  .dashboard-view-evaluator .dashboard-hero > div { min-width: min(100%, 320px); }
+  .dashboard-view-evaluator .dashboard-hero h1 { margin: 0 0 7px; font-size: clamp(1.45rem, 2vw, 1.8rem); }
+  .dashboard-view-evaluator .dashboard-hero .text-muted-foreground { margin: 0; }
+  .dashboard-view-evaluator .dashboard-hero .btn { flex: 0 0 auto; }
+  .dashboard-view-evaluator .dashboard-kpis { gap: 12px; }
+  .dashboard-view-evaluator .dashboard-kpi { border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+  .dashboard-view-evaluator .dashboard-kpi .card-content { min-height: 108px; gap: 6px; padding: 18px; }
+  .dashboard-view-evaluator .dashboard-kpi-label { font-size: .78rem; line-height: 1.4; }
+  .dashboard-view-evaluator .dashboard-section-heading h2,
+  .dashboard-view-evaluator .card-content > h2 { margin: 0 0 5px; }
+  .dashboard-view-evaluator .dashboard-section-heading .text-muted-foreground,
+  .dashboard-view-evaluator .card-content > .text-muted-foreground { margin: 0 0 14px; font-size: .86rem; }
+  .dashboard-view-evaluator .dashboard-instrument-grid { align-items: stretch; gap: 12px; }
+  .dashboard-view-evaluator .dashboard-instrument-grid > .card { box-shadow: none; }
+  .dashboard-view-evaluator .dashboard-instrument-grid .card-content { padding: 17px; }
+  .dashboard-view-evaluator .dashboard-instrument-grid h3 { margin: 0 0 10px; font-size: 1rem; overflow-wrap: anywhere; }
+  .dashboard-view-evaluator .dashboard-status-row { min-height: 40px; padding: 8px 2px; }
+  .dashboard-view-evaluator .dashboard-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    align-items: end;
+    gap: 10px;
+    margin: 16px 0;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--muted) 48%, var(--card));
+  }
+  .dashboard-view-evaluator .dashboard-filters label { min-width: 0; gap: 6px; color: var(--foreground); font-size: .78rem; font-weight: 650; }
+  .dashboard-view-evaluator .dashboard-filters .input { min-width: 0; }
+  .dashboard-view-evaluator .dashboard-filters > .btn { align-self: end; justify-content: center; }
+  .dashboard-view-evaluator .dashboard-empty { padding: 22px 16px; font-size: .9rem; }
+  .dashboard-view-evaluator .dashboard-table-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overscroll-behavior-inline: contain;
+  }
+  .dashboard-view-evaluator .dashboard-table { min-width: 720px; }
+  .dashboard-view-evaluator .dashboard-table td:last-child { white-space: nowrap; }
+  .dashboard-view-evaluator .badge { white-space: nowrap; }
+  @media (max-width: 767px) {
+    .dashboard-view-evaluator .dashboard-hero { align-items: flex-start; }
+    .dashboard-view-evaluator .dashboard-hero .btn { width: 100%; justify-content: center; }
+    .dashboard-view-evaluator .dashboard-filters { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+    .dashboard-view-evaluator .dashboard-filters > .btn { width: 100%; }
+  }
+  @media (max-width: 430px) {
+    .dashboard-view-evaluator .dashboard-kpis { grid-template-columns: minmax(0, 1fr); }
+    .dashboard-view-evaluator .dashboard-kpi .card-content { min-height: 92px; }
+    .dashboard-view-evaluator .dashboard-instrument-grid .card-content { padding: 15px; }
+    .dashboard-view-evaluator .dashboard-table { min-width: 680px; }
+  }
+</style>
+<section class="space-y-6 dashboard-view-evaluator">
   <header class="dashboard-hero"><div><p class="dashboard-eyebrow">Evaluación</p><h1 class="text-2xl font-semibold">Panel del evaluador</h1><p class="text-muted-foreground">Carga y actividad limitadas a tus instrumentos asignados.</p></div><a class="btn btn-primary" href="<?= BASE_URL ?>/views/evaluador/evaluacion.php">Abrir evaluación</a></header>
   <div class="dashboard-kpis">
     <?= tableroKpi('Revisiones pendientes',$stats['pendientes'],'Por evidencia e instrumento') ?>

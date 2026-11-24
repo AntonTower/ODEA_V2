@@ -100,6 +100,30 @@ $versiones=$conn->query("SELECT v.id_version,v.id_convocatoria,v.codigo_version,
     WHERE v.estado='PUBLICADA' AND c.estado='ACTIVA' AND p.estado='ACTIVO'")->fetch_all(MYSQLI_ASSOC);
 $versionesPorInstrumento=[];
 foreach ($versiones as $version) $versionesPorInstrumento[(int)$version['id_instrumento']][]=$version;
-foreach ($rows as &$r) $r['versiones']=$versionesPorInstrumento[(int)$r['id_instrumento']]??[];
+$st = $conn->prepare(
+    'SELECT ev.id_instrumento, ev.id_version, ev.resultado, ev.comentario,
+            ee.codigo AS estado_codigo, ee.nombre AS estado_nombre, ev.creada_en AS calificado_en,
+            ev.actualizada_en AS actualizado_en, ev.cerrada
+     FROM evaluaciones_versionadas ev
+     LEFT JOIN estados_evaluacion ee ON ee.id_estado=ev.id_estado
+     WHERE ev.id_evidencia=? AND ev.id_version IS NOT NULL'
+);
+$st->bind_param('i', $id);
+$st->execute();
+$evaluacionesPorVersion = [];
+foreach ($st->get_result()->fetch_all(MYSQLI_ASSOC) as $evaluacion) {
+    $evaluacionesPorVersion[(int)$evaluacion['id_instrumento']][(int)$evaluacion['id_version']] = $evaluacion;
+}
+$st->close();
+
+foreach ($rows as &$r) {
+    $instrumento = (int)$r['id_instrumento'];
+    $r['versiones'] = $versionesPorInstrumento[$instrumento] ?? [];
+    $r['evaluaciones_versionadas'] = array_values($evaluacionesPorVersion[$instrumento] ?? []);
+    foreach ($r['versiones'] as &$version) {
+        $version['evaluacion'] = $evaluacionesPorVersion[$instrumento][(int)$version['id_version']] ?? null;
+    }
+    unset($version);
+}
 unset($r);
 jexit(true, '', ['evidencia'=>$evi, 'instrumentos'=>$rows, 'estados'=>$estados]);

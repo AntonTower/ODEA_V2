@@ -38,6 +38,7 @@ $rs  = $conn->query($sql);
         <th class="dt-orderable">Nombre completo</th>
         <th class="dt-orderable">Tipo de calificación</th>
         <th class="dt-orderable">Rango</th>
+        <th class="dt-orderable">Estado</th>
         <th data-priority="2">Acciones</th>
       </tr>
     </thead>
@@ -50,6 +51,7 @@ $rs  = $conn->query($sql);
           $tipo = $row['tipo_calificacion'] ?? 'APROBACION';
           $min  = $row['min_calificacion'];
           $max  = $row['max_calificacion'];
+          $active = (int)$row['activo'] === 1;
 
           $tipoPill = ($tipo === 'NUMERICA')
             ? '<span class="pill p-num">Numérica</span>'
@@ -67,6 +69,13 @@ $rs  = $conn->query($sql);
                 <path d="M14.06 4.19l3.75 3.75" stroke="#3b82f6" stroke-width="1.8"/>
               </svg>
             </button>';
+          $btnState = $active
+            ? '<button class="btn instrument-state-button" type="button" title="Desactivar conservando el historial" onclick="cambiarEstadoInstrumento('.$id.', true)">Desactivar</button>'
+            : '<button class="btn instrument-state-button" type="button" title="Activar instrumento" onclick="cambiarEstadoInstrumento('.$id.', false)">Activar</button>';
+          $btnHardDelete = '<button class="btn instrument-hard-delete-button" type="button" title="Eliminar completamente si no tiene historial relacionado" onclick="eliminarInstrumentoCompleto('.$id.')">Eliminar por completo</button>';
+          $stateBadge = $active
+            ? '<span class="badge default">Activo</span>'
+            : '<span class="badge secondary">Inactivo</span>';
         ?>
         <tr data-tipo="<?= htmlspecialchars($tipo) ?>">
           <td></td>
@@ -75,7 +84,8 @@ $rs  = $conn->query($sql);
           <td><?= $nom ?></td>
           <td><?= $tipoPill ?></td>
           <td><?= $rango ?></td>
-          <td style="display:flex; gap:8px;"><?= $btnEdit ?></td>
+          <td><?= $stateBadge ?></td>
+          <td style="display:flex; flex-wrap:wrap; gap:8px;"><?= $btnEdit ?><?= $btnState ?><?= $btnHardDelete ?></td>
         </tr>
         <?php endwhile; ?>
       <?php endif; ?>

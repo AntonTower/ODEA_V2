@@ -5,7 +5,7 @@ function metadatosEsquemas(): array
     return [
         'articulo_cientifico' => ['label'=>'Artículo científico','fields'=>[
             'titulo'=>['label'=>'Título','type'=>'text','patterns'=>['/(?:t[ií]tulo|title)\s*[:\-]\s*(.{3,300})/iu']],
-            'autores'=>['label'=>'Autores','type'=>'list','patterns'=>['/(?:autores?|authors?)\s*[:\-]\s*(.{3,500})/iu']],
+            'autores'=>['label'=>'Autores','type'=>'list','patterns'=>['/(?:autor(?:es)?|authors?)\s*[:\-]\s*(.{3,500})/iu']],
             'revista'=>['label'=>'Revista','type'=>'text','patterns'=>['/(?:revista|journal)\s*[:\-]\s*(.{2,200})/iu']],
             'anio'=>['label'=>'Año','type'=>'text','patterns'=>['/(?:año|year|publicado\s+en)\s*[:\-]?\s*((?:19|20)\d{2})/iu']],
             'doi'=>['label'=>'DOI','type'=>'text','patterns'=>['/\b(10\.\d{4,9}\/[\-._;()\/:A-Z0-9]+)\b/iu']],
@@ -25,8 +25,8 @@ function metadatosEsquemas(): array
             'participante'=>['label'=>'Nombre del participante','type'=>'text','patterns'=>['/(?:se\s+otorga\s+a|participante|nombre)\s*[:\-]?\s*([^\r\n]{3,180})/iu']],
             'actividad'=>['label'=>'Actividad','type'=>'text','patterns'=>['/(?:actividad|curso|taller|diplomado|conferencia)\s*[:\-]\s*([^\r\n]{3,250})/iu']],
             'institucion'=>['label'=>'Institución emisora','type'=>'text','patterns'=>['/(?:instituci[oó]n|organiza(?:do|da)\s+por|issuer)\s*[:\-]\s*([^\r\n]{2,200})/iu']],
-            'fecha'=>['label'=>'Fecha','type'=>'text','patterns'=>['/(?:fecha|date)\s*[:\-]?\s*(\d{1,2}[\/\-.]\d{1,2}[\/\-.](?:\d{2}|\d{4})|\d{1,2}\s+de\s+[[:alpha:]áéíóúñ]+\s+de\s+\d{4})/iu']],
-            'duracion_horas'=>['label'=>'Duración / horas','type'=>'text','patterns'=>['/(\d{1,4}(?:[.,]\d+)?)\s*(?:horas?|hrs?\.?)/iu']],
+            'fecha'=>['label'=>'Fecha','type'=>'text','patterns'=>['/(?:fecha|date)\h*[:\-]?\h*(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\d{1,2}[\/\-.](?:\d{2}|\d{4})|\d{1,2}\s+de\s+[[:alpha:]áéíóúñ]+\s+de\s+\d{4})/iu']],
+            'duracion_horas'=>['label'=>'Duración / horas','type'=>'text','patterns'=>['/(?<![\d\-\/])(\d{1,4}(?:[.,]\d+)?)\h*(?:horas?|hrs?\.?)\b/iu','/\b(?:duraci[oó]n|horas?|hrs?\.?)\h*[:\-]\h*(\d{1,4}(?:[.,]\d+)?)(?![\d\-\/])/iu']],
             'tipo_participacion'=>['label'=>'Tipo de participación','type'=>'text','patterns'=>['/(?:participaci[oó]n|car[aá]cter)\s*[:\-]\s*([^\r\n]{2,120})/iu']],
         ]],
         'tesis_tutoria' => ['label'=>'Tesis o tutoría','fields'=>[
@@ -41,15 +41,15 @@ function metadatosEsquemas(): array
             'evento'=>['label'=>'Evento','type'=>'text','patterns'=>['/(?:evento|congreso|simposio|seminario)\s*[:\-]\s*([^\r\n]{2,250})/iu']],
             'titulo_participacion'=>['label'=>'Título de la participación','type'=>'text','patterns'=>['/(?:t[ií]tulo|ponencia|participaci[oó]n)\s*[:\-]\s*([^\r\n]{3,300})/iu']],
             'autor_participante'=>['label'=>'Autor o participante','type'=>'list','patterns'=>['/(?:autor(?:es)?|ponente|participante)\s*[:\-]\s*([^\r\n]{3,350})/iu']],
-            'fecha'=>['label'=>'Fecha','type'=>'text','patterns'=>['/(?:fecha|date)\s*[:\-]?\s*(\d{1,2}[\/\-.]\d{1,2}[\/\-.](?:\d{2}|\d{4})|\d{1,2}\s+de\s+[[:alpha:]áéíóúñ]+\s+de\s+\d{4})/iu']],
+            'fecha'=>['label'=>'Fecha','type'=>'text','patterns'=>['/(?:fecha|date)\h*[:\-]?\h*(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\d{1,2}[\/\-.](?:\d{2}|\d{4})|\d{1,2}\s+de\s+[[:alpha:]áéíóúñ]+\s+de\s+\d{4})/iu']],
             'institucion_organizadora'=>['label'=>'Institución organizadora','type'=>'text','patterns'=>['/(?:organiza(?:do|da)\s+por|instituci[oó]n\s+organizadora)\s*[:\-]?\s*([^\r\n]{2,200})/iu']],
             'modalidad'=>['label'=>'Modalidad','type'=>'text','patterns'=>['/(?:modalidad)\s*[:\-]\s*([^\r\n]{2,100})/iu']],
         ]],
         'documento_general' => ['label'=>'Documento académico','fields'=>[
             'titulo'=>['label'=>'Título','type'=>'text','patterns'=>['/(?:t[ií]tulo|title)\s*[:\-]\s*(.{3,300})/iu']],
-            'autores'=>['label'=>'Autoría','type'=>'list','patterns'=>['/(?:autores?|authors?)\s*[:\-]\s*(.{3,500})/iu']],
+            'autores'=>['label'=>'Autoría','type'=>'list','patterns'=>['/(?:autor(?:es)?|authors?)\s*[:\-]\s*(.{3,500})/iu']],
             'institucion'=>['label'=>'Institución','type'=>'text','patterns'=>['/(?:instituci[oó]n|universidad|issuer)\s*[:\-]\s*([^\r\n]{2,200})/iu']],
-            'fecha'=>['label'=>'Fecha','type'=>'text','patterns'=>['/(?:fecha|date)\s*[:\-]?\s*(\d{1,2}[\/\-.]\d{1,2}[\/\-.](?:\d{2}|\d{4})|\d{1,2}\s+de\s+[[:alpha:]áéíóúñ]+\s+de\s+\d{4})/iu']],
+            'fecha'=>['label'=>'Fecha','type'=>'text','patterns'=>['/(?:fecha|date)\h*[:\-]?\h*(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\d{1,2}[\/\-.](?:\d{2}|\d{4})|\d{1,2}\s+de\s+[[:alpha:]áéíóúñ]+\s+de\s+\d{4})/iu']],
         ]],
     ];
 }

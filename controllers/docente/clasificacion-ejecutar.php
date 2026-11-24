@@ -1,0 +1,7 @@
+<?php
+header('Content-Type: application/json; charset=utf-8');if(!defined('BASE_DIR'))define('BASE_DIR',realpath(__DIR__.'/../..'));
+require_once BASE_DIR.'/config/paths.php';require_once CONFIG_DIR.'/conexion.php';require_once CONFIG_DIR.'/validacion.php';require_once CONFIG_DIR.'/csrf.php';require_once CONFIG_DIR.'/seguridad.php';require_once CONFIG_DIR.'/clasificacion_documental.php';csrf_exigir();
+function clasificarJson(int $code,string $message,array $extra=[]):void{http_response_code($code);echo json_encode(array_merge(['status'=>$code<400?'ok':'error','message'=>$message],$extra),JSON_UNESCAPED_UNICODE);exit;}
+$user=seguridadUsuarioActual($conn);if(!seguridadTieneRol($user,[1,2,4]))clasificarJson(403,'No tienes permiso para generar propuestas.');$id=(int)($_POST['id_evidencia']??0);if($id<1)clasificarJson(400,'Evidencia no válida.');
+$st=$conn->prepare('SELECT id_evidencia,id_docente,id_tipo_evidencia,ocultar FROM evidencias WHERE id_evidencia=?');$st->bind_param('i',$id);$st->execute();$e=$st->get_result()->fetch_assoc();$st->close();if(!$e||(int)$e['ocultar']!==0||!seguridadPuedeEditarEvidencia($user,$e))clasificarJson(403,'Solo el propietario o un rol administrativo puede generar propuestas.');
+try{$result=clasificacionEjecutar($conn,$id);clasificarJson(200,$result['mensaje'],$result);}catch(Throwable $ex){error_log('ODEA classification failed evidence='.$id.' code='.get_class($ex));clasificarJson(500,'No fue posible evaluar las reglas configuradas.');}

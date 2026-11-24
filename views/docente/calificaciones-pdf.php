@@ -1,6 +1,6 @@
 <?php
 /**
- * Generador PDF: Calificaciones aprobadas por instrumento
+ * Generador PDF: Dictámenes por instrumento
  * Uso: calificaciones-pdf.php?instrumento=ID
  *
  * Requisitos:
@@ -11,6 +11,7 @@
 require_once __DIR__ . '/../../config/paths.php';
 require_once CONFIG_DIR . '/validacion.php';
 require_once CONFIG_DIR . '/seguridad.php';
+require_once CONFIG_DIR . '/reportes.php';
 
 // === Ruta a FPDF (ajústala si la tiene en otro lado) ===
 if (!class_exists('FPDF')) {
@@ -18,7 +19,6 @@ if (!class_exists('FPDF')) {
 }
 
 // ==================== Configurables ====================
-$NUMERIC_PASS_PCT = 0.60; // 60% del rango -> umbral para aprobar en instrumentos NUMÉRICOS
 
 // ==================== Helpers ====================
 function to1252($s){
@@ -33,21 +33,8 @@ function fmtNum($n, $dec=2){
   $s = rtrim(rtrim($s,'0'),'.');
   return $s;
 }
-function approvedFlag($tipo, $resultado, $min, $max, $pct){
-  if ($resultado === null || $resultado === '') return false;
-  $res = (float)$resultado;
-  if ($tipo === 'NUMERICA') {
-    $umbral = (float)$min + $pct * ((float)$max - (float)$min);
-    return ($res >= $umbral);
-  }
-  // APROBACION
-  return ($res >= 1.0);
-}
-
 // ==================== Lee parámetros ====================
-$user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
-
+$usuarioActual = seguridadUsuarioActual($conn);
 $instId = isset($_GET['instrumento']) ? (int)$_GET['instrumento'] : 0;
 if ($instId <= 0) {
   http_response_code(400);
@@ -72,7 +59,7 @@ if (!$inst) {
   http_response_code(404);
   echo "Instrumento no encontrado o inactivo."; exit;
 }
-if (!seguridadPuedeAccederInstrumento($conn, ['id_usuario'=>(int)$user_id,'rol'=>(int)$user_role], $instId)) {
+if (!seguridadPuedeAccederInstrumento($conn, $usuarioActual, $instId)) {
   http_response_code(403);
   echo 'No autorizado para este instrumento.'; exit;
 }
@@ -83,61 +70,17 @@ $instTipo = $inst['tipo_calificacion']; // APROBACION | NUMERICA
 $minCal   = (float)$inst['min_cal'];
 $maxCal   = (float)$inst['max_cal'];
 
-// ==================== Carga evidencias relacionadas y su calificación ====================
-//
-// Traemos todas las evidencias cuyo TIPO está asignado al instrumento
-// y luego filtramos en PHP por "aprobadas" según la lógica arriba.
-// Incluimos datos del docente y del tipo para imprimir en el PDF.
-//
-$sqlE = "SELECT
-           e.id_evidencia, e.titulo, e.archivo, e.fecha_subida, e.id_docente,
-           u.nombre, u.apellidop, u.apellidom,
-           t.id_tipo_evidencia, t.nombre_tipo,
-           ce.resultado, ce.comentario, ce.calificado_en, ce.actualizado_en
-         FROM evidencias e
-         JOIN instrumento_tipo_evidencia ite
-              ON ite.id_tipo_evidencia = e.id_tipo_evidencia
-             AND ite.id_instrumento    = ?
-         JOIN instrumentos i
-              ON i.id_instrumento = ite.id_instrumento
-             AND i.activo = 1
-         LEFT JOIN calificacion_evidencia ce
-              ON ce.id_evidencia   = e.id_evidencia
-             AND ce.id_instrumento = i.id_instrumento
-         LEFT JOIN usuarios u
-              ON u.id_usuario = e.id_docente
-         LEFT JOIN tipos_de_evidencia t
-              ON t.id_tipo_evidencia = e.id_tipo_evidencia
-         WHERE e.ocultar = 0 ";
-$params = [$instId]; $types = 'i';
-
-if ($user_role === 4) {
-  $sqlE .= " AND e.id_docente = ? ";
-  $params[] = $user_id; $types .= 'i';
-}
-$sqlE .= " ORDER BY e.id_evidencia DESC";
-
-$stE = $conn->prepare($sqlE);
-$stE->bind_param($types, ...$params);
-$stE->execute();
-$resE = $stE->get_result();
-
-$evidencias = [];
-if ($resE) {
-  while ($row = $resE->fetch_assoc()) {
-    // Filtrar por APROBADAS
-    $ok = approvedFlag($instTipo, $row['resultado'], $minCal, $maxCal, $NUMERIC_PASS_PCT);
-    if ($ok) $evidencias[] = $row;
-  }
-}
-$stE->close();
+$filtros = reportesFiltrosContexto($_GET);
+$filtros['solo_aceptadas'] = in_array(strtoupper($filtros['estado']), ['', 'ACEPTADA'], true);
+$evidencias = reportesConsultarDictamenes($conn, $usuarioActual, $instId, 0, $filtros);
+$valuesCache = reportesCargarValoresAtributos($conn, array_column($evidencias, 'id_evidencia'));
 
 // Si no hay aprobadas, informamos con un PDF mínimo
 if (empty($evidencias)) {
   class PDF extends FPDF {
     function Header(){
       $this->SetFont('Arial','B',12);
-      $this->Cell(0,8,to1252('Calificaciones aprobadas por instrumento'),0,1,'C');
+      $this->Cell(0,8,to1252('Dictámenes por instrumento'),0,1,'C');
       $this->Ln(2);
     }
     function Footer(){
@@ -155,7 +98,7 @@ if (empty($evidencias)) {
   $pdf->Cell(0,8,to1252("Instrumento: {$instAbbr} — {$instName}"),0,1,'L');
   $pdf->Ln(2);
   $pdf->SetFont('Arial','B',12);
-  $pdf->Cell(0,8,to1252('No hay evidencias aprobadas.'),0,1,'L');
+  $pdf->Cell(0,8,to1252('No hay dictámenes para los filtros seleccionados.'),0,1,'L');
 
   $fname = 'calificaciones_'.$instAbbr.'_'.date('Ymd_His').'.pdf';
   $pdf->Output('I', $fname);
@@ -184,27 +127,6 @@ function loadAttrDefs($conn, $tipoId){
   $rows = $rs ? $rs->fetch_all(MYSQLI_ASSOC) : [];
   $st->close();
   return $rows;
-}
-
-function loadAttrValues($conn, $eviId){
-  $sqlV = "SELECT id_eva, id_ate, indice,
-                  valor_texto, valor_largo, valor_int, valor_decimal,
-                  valor_fecha, valor_bool, valor_archivo, valor_json
-           FROM evidencia_valores_atributo
-           WHERE id_evidencia = ?
-           ORDER BY id_ate ASC, indice ASC, id_eva ASC";
-  $st = $conn->prepare($sqlV);
-  $st->bind_param('i', $eviId);
-  $st->execute();
-  $rs = $st->get_result();
-  $map = [];
-  if ($rs) {
-    while ($r = $rs->fetch_assoc()) {
-      $map[(int)$r['id_ate']][] = $r;
-    }
-  }
-  $st->close();
-  return $map;
 }
 
 function pickListByGroup($def, $vals){
@@ -306,18 +228,16 @@ $pdf->SetAutoPageBreak(true, 18);
 
 // === Portada / Encabezado del informe ===
 $pdf->SetFont('Arial','B',14);
-$pdf->Cell(0,8,to1252('Calificaciones aprobadas por instrumento'),0,1,'L');
+$pdf->Cell(0,8,to1252('Dictámenes por instrumento'),0,1,'L');
 $pdf->SetFont('Arial','',11);
 $pdf->Cell(0,7,to1252('Fecha de generación: '.date('Y-m-d H:i')),0,1,'L');
 $pdf->Ln(2);
 $pdf->H2("Instrumento: {$instAbbr} — {$instName}");
 $pdf->KV('Tipo', $instTipo === 'NUMERICA' ? 'NUMÉRICA' : 'APROBACIÓN');
 if ($instTipo === 'NUMERICA') {
-  $umbral = $minCal + $NUMERIC_PASS_PCT * ($maxCal - $minCal);
-  $pdf->KV('Rango', fmtNum($minCal).' – '.fmtNum($maxCal));
-  $pdf->KV('Umbral', fmtNum($umbral));
+  $pdf->KV('Rango', fmtNum($minCal).' - '.fmtNum($maxCal));
 }
-$pdf->KV('Total evidencias aprobadas', (string)count($evidencias));
+$pdf->KV('Total de dictámenes', (string)count($evidencias));
 $pdf->Separator();
 $pdf->Ln(2);
 
@@ -342,16 +262,13 @@ foreach ($evidencias as $row) {
 
   // Resultado + Comentario
   $pdf->SetFont('Arial','',10);
-  if ($instTipo === 'NUMERICA') {
-    $pdf->KV('Resultado', fmtNum($res));
-    $pdf->KV('Calificado en', $calEn);
-    $pdf->Badge('APROBADA', true);
-  } else {
-    // Aprobación
-    $aprob = ((float)$res >= 1.0);
-    $pdf->KV('Resultado', $aprob ? 'Aprobada (1)' : 'No aprobada (0)');
-    $pdf->KV('Calificado en', $calEn);
-    $pdf->Badge($aprob ? 'APROBADA' : 'NO APROBADA', $aprob);
+  $pdf->KV('Estado', $row['estado']);
+  $pdf->KV('Resultado', $res === null ? 'Sin resultado' : fmtNum($res));
+  $pdf->KV('Evaluador', $row['evaluador']);
+  $pdf->KV('Actualizado', $row['actualizado_en'] ?? $calEn);
+  if ($row['id_version']) {
+    $pdf->KV('Convocatoria', $row['convocatoria']);
+    $pdf->KV('Versión', $row['codigo_version']);
   }
   if (trim($com) !== '') {
     $pdf->SetFont('Arial','B',10);
@@ -365,7 +282,7 @@ foreach ($evidencias as $row) {
     $defsCache[$tipoId] = loadAttrDefs($conn, $tipoId);
   }
   $defs = $defsCache[$tipoId];
-  $valsMap = loadAttrValues($conn, $eviId);
+  $valsMap = $valuesCache[$eviId] ?? [];
 
   if (empty($defs)) {
     $pdf->Ln(2);

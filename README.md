@@ -27,18 +27,9 @@ En la configuración actual, PHP intenta conectarse a `127.0.0.1:3308` con el us
 
 El archivo `index.php` redirige a la pantalla de inicio de sesión. No se necesita Node.js ni Composer para ejecutar la aplicación.
 
-## 3. Cuentas de demostración
+## 3. Usuarios de prueba
 
-Las cuentas indicadas para el sistema son:
-
-| Rol | Correo | Contraseña |
-|---|---|---|
-| Super Admin (Super Usuario) | `anton.tower21@gmail.com` | `#Luis0605050#` |
-| Administrador | `anton.tower21administrador@gmail.com` | `#Luis0605050#` |
-| Docente | `anton.tower21docente@gmail.com` | `#Luis0605050#` |
-| Evaluador | `anton.tower21evaluador@gmail.com` | `#Luis0605050#` |
-
-Las cuatro cuentas están incluidas en `sql/gestor_evidencia_produccion_v2.sql`, activas y con la contraseña compartida indicada. Las contraseñas se almacenan con hash en la base de datos.
+El volcado SQL contiene cuentas y evidencias de demostración heredadas. No publiques ni uses esos registros en instalaciones accesibles desde Internet. Para una instalación real, importa el esquema únicamente en una base aislada, revisa y sustituye los usuarios de muestra y define contraseñas individuales antes de habilitar el acceso. No se documentan credenciales compartidas.
 
 ## 4. Funciones principales
 
@@ -76,7 +67,11 @@ El límite de carga definido por la aplicación es de 10 MB por archivo. En `php
 - [Documentación técnica](docs/DOCUMENTACION_TECNICA.md)
 - [Instalación y documentación de la base v2](sql/README_produccion.md)
 - [Datos de demostración](sql/prueba/README_demo.md)
+- [Informe de validación integral](docs/INFORME_VALIDACION_FINAL_ODEA.md)
+- [Manual del docente](docs/MANUAL_DOCENTE.md)
+- [Manual del evaluador](docs/MANUAL_EVALUADOR.md)
+- [Manual administrativo](docs/MANUAL_ADMINISTRADOR.md)
 
 ## 8. Seguridad
 
-La contraseña compartida de demostración debe usarse únicamente en un entorno local de prueba. Antes de publicar el sistema, cambia las credenciales, configura un usuario MySQL con permisos limitados y utiliza contraseñas individuales. No expongas este README con credenciales de demostración en un despliegue público.
+El dump SQL heredado incluye cuentas de demostración activas. No reutilices esas cuentas fuera de un laboratorio aislado; reemplázalas y rota cualquier credencial coincidente antes de desplegar. Configura un usuario MySQL de privilegio mínimo y secretos privados en el entorno del servicio web.

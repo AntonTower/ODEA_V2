@@ -129,15 +129,33 @@ $result = $stmt->get_result();
               </svg>
             </button>';
 
-          // Eliminar
-          $safeName = htmlspecialchars($nombre, ENT_QUOTES);
-          $btnDelete = '
-            <button class="btn" type="button" title="Eliminar"
-                    onclick="openEliminarU('.$id.', \''.$safeName.'\')">
+          // Cambiar estado de la cuenta
+          $safeName = htmlspecialchars(
+            json_encode($nombre, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8'
+          );
+          $btnDelete = $activo === 1 ? '
+            <button class="btn" type="button" title="Desactivar cuenta"
+                    onclick="openEliminarU('.$id.', '.$safeName.', true)">
               <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
                 <path d="M3 6h18M8 6l1-2h6l1 2M6 6l1 14h10l1-14" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/>
                 <path d="M10 11v6M14 11v6" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
+              </svg> Desactivar
+            </button>' : '
+            <button class="btn" type="button" title="Reactivar cuenta"
+                    onclick="openEliminarU('.$id.', '.$safeName.', false)">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
+                <path d="M12 3v9m6.36-6.36a9 9 0 1 1-12.72 0" stroke="#059669" stroke-width="1.8" stroke-linecap="round"/>
+              </svg> Reactivar
+            </button>';
+
+          $btnDeleteForever = '
+            <button class="btn" type="button" title="Eliminar usuario y evidencias por completo"
+                    onclick="openEliminarDefinitivoU('.$id.', '.$safeName.')">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px;">
+                <path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5" stroke="#991b1b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg> Eliminar por completo
             </button>';
 
           $correoHtml = $correo ? '<a href="mailto:'.htmlspecialchars($correo).'" class="link">'.htmlspecialchars($correo).'</a>' : '—';
@@ -160,6 +178,7 @@ $result = $stmt->get_result();
             <?= $btnPerfil ?>
             <?= $btnEdit ?>
             <?= $btnDelete ?>
+            <?= $btnDeleteForever ?>
           </td>
         </tr>
         <?php endwhile; ?>
